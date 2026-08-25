@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC
 
 from deckdoctor.checks._util import result
 from deckdoctor.context import DiagnosticContext
@@ -22,7 +22,7 @@ def _parse_show(text: str) -> dict[str, str]:
 def run(ctx: DiagnosticContext) -> CheckResult:
     now = ctx.now
     if now.tzinfo is None:
-        now = now.replace(tzinfo=timezone.utc)
+        now = now.replace(tzinfo=UTC)
     year = now.year
     evidence = [f"Clock (tool): {now.isoformat()}"]
 
@@ -64,7 +64,7 @@ def run(ctx: DiagnosticContext) -> CheckResult:
     synced = show.get("NTPSynchronized", "")
     ntp_enabled = show.get("NTPEnabled", ntp)
     evidence.append(proc.stdout.strip()[:400])
-    ctx.facts["ntp_synchronized"] = synced.lower() == "yes"
+    ctx.facts.ntp_synchronized = synced.lower() == "yes"
 
     if synced.lower() == "no" and ntp_enabled.lower() == "yes":
         return result(

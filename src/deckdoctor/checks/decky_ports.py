@@ -60,8 +60,8 @@ def run(ctx: DiagnosticContext) -> CheckResult:
         )
 
     listeners = _parse_ss(proc.stdout)
-    ctx.facts["port_8080"] = listeners.get(CEF_PORT, [])
-    ctx.facts["port_1337"] = listeners.get(DECKY_PORT, [])
+    ctx.facts.port_8080 = listeners.get(CEF_PORT, [])
+    ctx.facts.port_1337 = listeners.get(DECKY_PORT, [])
     evidence = []
     for port in (CEF_PORT, DECKY_PORT):
         owners = listeners.get(port) or ["(not listening)"]
@@ -80,9 +80,9 @@ def run(ctx: DiagnosticContext) -> CheckResult:
             recs.append(
                 "Change the other application's port (Syncthing should use 8384). Decky cannot move Steam's CEF port."
             )
-            ctx.facts["port_8080_conflict"] = True
+            ctx.facts.port_8080_conflict = True
     else:
-        ctx.facts["port_8080_listening"] = False
+        ctx.facts.port_8080_listening = False
         evidence.append("8080 not listening — Steam Game Mode CEF debugger may be down (or you are in Desktop Mode).")
 
     owners_1337 = listeners.get(DECKY_PORT, [])
@@ -91,10 +91,10 @@ def run(ctx: DiagnosticContext) -> CheckResult:
         if DECKY_EXPECTED.lower() not in joined.lower() and "pluginloader" not in joined.lower() and "python" not in joined.lower():
             problems.append(f"Port {DECKY_PORT} is in use by {owners_1337[0]!r}, expected {DECKY_EXPECTED}.")
             recs.append("Stop or reconfigure the process using 1337. DeckDoctor will not kill it.")
-            ctx.facts["port_1337_conflict"] = True
-    elif ctx.facts.get("decky_service_active") == "active":
+            ctx.facts.port_1337_conflict = True
+    elif ctx.facts.decky_service_active == "active":
         problems.append("Decky service is active but port 1337 is not listening.")
-        ctx.facts["port_1337_missing"] = True
+        ctx.facts.port_1337_missing = True
 
     if problems:
         return result(
@@ -110,7 +110,7 @@ def run(ctx: DiagnosticContext) -> CheckResult:
         )
 
     finding = f"{CEF_PORT}: {', '.join(owners_8080) if owners_8080 else 'not listening'}; {DECKY_PORT}: {', '.join(owners_1337) if owners_1337 else 'not listening'}"
-    status = Status.PASS if owners_1337 or ctx.facts.get("decky_installed") is False else Status.INFO
+    status = Status.PASS if owners_1337 or ctx.facts.decky_installed is False else Status.INFO
     return result(
         ID,
         TITLE,

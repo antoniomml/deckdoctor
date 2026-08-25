@@ -48,3 +48,28 @@ def test_sanitizer_ip_replacements_are_stable() -> None:
     assert once.count("<PRIVATE_IP_1>") == 2
     assert "<PRIVATE_IP_2>" in once
     assert "<PRIVATE_IP_1>" in twice
+
+
+def test_sanitizer_redacts_private_ipv6() -> None:
+    san = Sanitizer(user="deck", home="/home/deck", hostname="host")
+    out = san.apply("ula fd12:3456:789a:1::1 link fe80::1 loop ::1")
+    assert "fd12:3456:789a:1::1" not in out
+    assert "fe80::1" not in out
+    assert "<PRIVATE_IP_" in out
+
+
+def test_apply_obj_does_not_break_json_types() -> None:
+    san = Sanitizer(user="antonio", home="/home/antonio", hostname="steamdeck")
+    payload = {"user": "antonio", "ok": True, "count": 2, "nested": ["antonio", 1]}
+    out = san.apply_obj(payload)
+    assert out["ok"] is True
+    assert out["count"] == 2
+    assert out["user"] == "<USER>"
+    assert out["nested"][1] == 1
+
+
+def test_short_username_is_not_replaced() -> None:
+    san = Sanitizer(user="ab", home="/home/ab", hostname="xy")
+    out = san.apply("ab xy stay")
+    assert "ab" in out
+    assert "xy" in out

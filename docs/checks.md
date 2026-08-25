@@ -15,7 +15,7 @@ False-positive risk: `low | medium | high`.
 | SYS-OS-VERSION | SteamOS version and build | `/etc/os-release`, atomupd manifest if present | read files | info | low | no | no | yes |
 | SYS-OS-CHANNEL | SteamOS update channel | `steamos-select-branch` output | `steamos-select-branch` / `-c` | info | low | no | no | yes |
 | SYS-OS-UPDATER | Updater can *check*; pending update vs broken vs unknown | atomupd D-Bus / manager / `steamos-update check` / `--query-only`; never scrape the web | `atomupd-manager check` or `get-update-status`; `steamos-update check`; `steamos-atomupd-client --query-only` | high if check fails | medium (exit codes vary) | optional (check talks to Valve) | no if D-Bus works; else SKIPPED | yes |
-| SYS-DISK | Free space on `/home` and `/var` | `df` | `df -Pk /home /var /` | high if &lt;500MB; warn &lt;2GB | low | no | no | yes |
+| SYS-DISK | Free space on user home and `/var` (never treat the A/B root `/` as the worst mount) | `shutil.disk_usage` | home + `/var`, deduped by `st_dev` | high if &lt;500MB; warn &lt;2GB | low | no | no | yes |
 | SYS-TIME | Clock clearly wrong / NTP not synced | `timedatectl` | `timedatectl show` | medium | medium | no | no | yes |
 | STEAM-CLIENT | Steam client build and channel | logs / package manifest / VDF | read `~/.steam/steam/logs`, `package/`, config VDF | info; warn on Beta as correlation factor only | medium (parse) | no | no | yes |
 | DECKY-INSTALL | Homebrew tree, PluginLoader binary, version, channel | filesystem | stat/read `$HOME/homebrew/services/PluginLoader`, `.loader.version`, settings `branch` | high if incomplete | low | no | no | yes |

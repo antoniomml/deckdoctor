@@ -1,33 +1,27 @@
 # DeckDoctor roadmap
 
-## 0.1 — Diagnose (this release)
+## 0.1 — Diagnose
 
 Standalone CLI. Read-only. No Decky plugin. No automatic fixes.
 
-Ships:
+Shipped in 0.1: core types, MVP checks, human CLI + `--json` + `report`, pytest fixtures, PyInstaller + `scripts/install.sh`, docs.
 
-- Core: `Check`, `CheckResult`, `DiagnosticContext`, `CommandRunner`, correlator, sanitizer, report
-- MVP checks listed in [checks.md](checks.md)
-- Human CLI + `--json` + `deckdoctor report`
-- Pytest fixtures for healthy and broken states
-- PyInstaller x86_64 binary + `scripts/install.sh`
-- Docs: research, design, checks, this roadmap
+## 0.2 — Hardening (this tree)
 
-Success: a user who cannot use `systemctl`/`journalctl`/`flatpak` still gets a useful explanation, including the three product examples:
+- Disk check ignores a full A/B root filesystem
+- `install.sh` verifies `SHA256SUMS`; tag workflow publishes the binary + checksums
+- Command guardrails recognise `systemctl --user start` / `flatpak --user update`
+- Shared `flatpak remote-ls -a` probe; exit code 2 on internal errors
+- `--lang es|en`, `--ascii`/`--plain`, `--only`, `--timeout`
+- Typed `Facts`, `Check` protocol, ruff + mypy, field-level JSON sanitiser, HTTP host allowlist
 
-1. AutoFlatpaks installed and loading, but Flatpak cannot list remotes because a named remote has dead refs.
-2. Decky installed, PluginLoader running, frontend not loading; Steam Beta is a likely factor.
-3. Incomplete install: PluginLoader missing, GitHub API remaining = 0.
-
-## 0.2 — Deeper software health
+## 0.2.x — Deeper software health (still open)
 
 - Flatpak EOL via metadata probe (`EndOfLife`), with apps that use those runtimes
 - Plugin store update count if name matching can be made reliable
-- Decky stable update available via `releases/latest` redirect (no API)
 - SteamOS pending-reboot if a stable local signal is confirmed on 3.8+
 - Overlay warning if `client.conf` / `rauc/system.conf` are user-edited
 - Bounded CEF/`steamloopback.host` excerpt in the report
-- `--offline` already exists as `--no-network`; add `--only ID,ID`
 
 ## 0.3 — Opt-in fixes (strict contract)
 

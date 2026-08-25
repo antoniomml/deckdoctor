@@ -11,7 +11,7 @@ UNIT = "plugin_loader.service"
 
 
 def run(ctx: DiagnosticContext) -> CheckResult:
-    if ctx.facts.get("decky_installed") is False:
+    if ctx.facts.decky_installed is False:
         return result(
             ID,
             TITLE,
@@ -58,9 +58,9 @@ def run(ctx: DiagnosticContext) -> CheckResult:
     result_state = props.get("Result", "")
     main_status = props.get("ExecMainStatus", "")
     nrestarts = props.get("NRestarts", "")
-    ctx.facts["decky_service_active"] = active_s
-    ctx.facts["decky_service_enabled"] = enabled_s
-    ctx.facts["decky_service_result"] = result_state
+    ctx.facts.decky_service_active = active_s
+    ctx.facts.decky_service_enabled = enabled_s
+    ctx.facts.decky_service_result = result_state
 
     if "not-found" in enabled_s or load_state == "not-found":
         return result(

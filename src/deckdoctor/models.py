@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 
-class Status(str, Enum):
+class Status(StrEnum):
     PASS = "pass"
     INFO = "info"
     WARNING = "warning"
@@ -14,19 +14,19 @@ class Status(str, Enum):
     UNKNOWN = "unknown"
 
 
-class Severity(str, Enum):
+class Severity(StrEnum):
     HIGH = "high"
     MEDIUM = "medium"
     LOW = "low"
     NONE = "none"
 
 
-class Confidence(str, Enum):
+class Confidence(StrEnum):
     HIGH = "high"
     MEDIUM = "medium"
 
 
-class EvidenceSource(str, Enum):
+class EvidenceSource(StrEnum):
     SYSTEMD = "systemd"
     JOURNAL = "journal"
     FILESYSTEM = "filesystem"
@@ -100,6 +100,9 @@ class Report:
     results: list[CheckResult]
     diagnoses: list[Diagnosis]
     facts: dict[str, Any] = field(default_factory=dict)
+    locale: str = "en"
+    ascii_mode: bool = False
+    partial: bool = False
 
     @property
     def problems(self) -> list[CheckResult]:
@@ -113,4 +116,6 @@ class Report:
             "results": [r.to_dict() for r in self.results],
             "diagnoses": [d.to_dict() for d in self.diagnoses],
             "problem_count": len(self.problems),
+            "locale": self.locale,
+            "partial": self.partial,
         }

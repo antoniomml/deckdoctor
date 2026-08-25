@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from deckdoctor.i18n import translate
 from deckdoctor.models import Report, Status
 from deckdoctor.sanitizer import Sanitizer
 
@@ -10,24 +11,28 @@ def render_markdown(report: Report, sanitizer: Sanitizer) -> str:
 
 
 def _markdown(report: Report) -> str:
+    def t(key: str, **kwargs: object) -> str:
+        return translate(report.locale, key, **kwargs)
+
+    facts = report.facts
     lines = [
-        "# DeckDoctor report",
+        t("report.title"),
         "",
         f"- Tool version: `{report.version}`",
         f"- Generated (UTC): `{report.generated_at}`",
-        "- Posture: read-only, local-first, no telemetry.",
-        "- Sanitisation is **best-effort**. Review this file before posting.",
+        t("report.posture"),
+        t("report.sanitise"),
         "",
-        "## System",
+        t("report.system"),
         "",
-        f"- User home (sanitised later): `{report.facts.get('decky_home', '')}`",
-        f"- SteamOS version: `{report.facts.get('os_version', 'unknown')}` build `{report.facts.get('os_build', 'unknown')}`",
-        f"- SteamOS channel: `{report.facts.get('os_channel', 'unknown')}`",
-        f"- Steam client: build `{report.facts.get('steam_version', 'unknown')}` channel `{report.facts.get('steam_channel', 'unknown')}`",
-        f"- Decky: `{report.facts.get('decky_version', 'unknown')}` channel `{report.facts.get('decky_channel', 'unknown')}`",
-        f"- PluginLoader present: `{report.facts.get('plugin_loader_present', 'unknown')}`",
+        f"- User home (sanitised later): `{facts.get('decky_home', '')}`",
+        f"- SteamOS version: `{facts.get('os_version', 'unknown')}` build `{facts.get('os_build', 'unknown')}`",
+        f"- SteamOS channel: `{facts.get('os_channel', 'unknown')}`",
+        f"- Steam client: build `{facts.get('steam_version', 'unknown')}` channel `{facts.get('steam_channel', 'unknown')}`",
+        f"- Decky: `{facts.get('decky_version', 'unknown')}` channel `{facts.get('decky_channel', 'unknown')}`",
+        f"- PluginLoader present: `{facts.get('plugin_loader_present', 'unknown')}`",
         "",
-        "## Check summary",
+        t("report.summary"),
         "",
         "| Status | ID | Finding |",
         "|---|---|---|",
@@ -36,35 +41,39 @@ def _markdown(report: Report) -> str:
         finding = item.finding.replace("|", "\\|")
         lines.append(f"| `{item.status.value}` | `{item.check_id}` | {finding} |")
 
-    lines += ["", "## Diagnoses", ""]
+    lines += ["", t("report.diagnoses"), ""]
     if not report.diagnoses:
-        lines.append("_No correlated diagnoses._")
+        lines.append(t("report.no_diagnoses"))
     for diag in report.diagnoses:
         lines.append(f"### {diag.title}")
         lines.append("")
-        lines.append(f"- Kind: **{diag.fact_kind}** · confidence **{diag.confidence.value}** · severity **{diag.severity.value}**")
+        lines.append(
+            f"- Kind: **{diag.fact_kind}** · confidence **{diag.confidence.value}** · severity **{diag.severity.value}**"
+        )
         lines.append(f"- Checks: {', '.join(f'`{c}`' for c in diag.related_checks)}")
         lines.append("")
         lines.append(diag.summary)
         lines.append("")
         if diag.recommendation:
-            lines.append(f"**Recommended:** {diag.recommendation}")
+            lines.append(f"**{t('ui.recommended', text=diag.recommendation).split(': ', 1)[-1]}**")
             lines.append("")
 
-    lines += ["", "## Failed and warning checks", ""]
+    lines += ["", t("report.problems"), ""]
     problems = [r for r in report.results if r.status in {Status.FAIL, Status.WARNING}]
     if not problems:
-        lines.append("_None._")
+        lines.append(t("report.none"))
     for item in problems:
         lines.append(f"### {item.check_id}: {item.finding}")
         lines.append("")
-        lines.append(f"- Status: `{item.status.value}` · severity `{item.severity.value}` · source `{item.source.value}`")
+        lines.append(
+            f"- Status: `{item.status.value}` · severity `{item.severity.value}` · source `{item.source.value}`"
+        )
         if item.explanation:
             lines.append("")
             lines.append(item.explanation)
         if item.recommendation:
             lines.append("")
-            lines.append(f"**Recommended:** {item.recommendation}")
+            lines.append(f"**{t('ui.recommended', text=item.recommendation)}**")
         if item.evidence:
             lines.append("")
             lines.append("Evidence:")
@@ -75,16 +84,16 @@ def _markdown(report: Report) -> str:
         lines.append("")
 
     lines += [
-        "## Network checks performed",
+        t("report.network"),
         "",
-        "DeckDoctor only contacts endpoints required by explicit checks: GitHub (github.com, api.github.com/rate_limit, optional releases/latest redirect), the Decky Plugin Store, Flatpak remotes already configured on the device, and SteamOS updater endpoints if those tools query them. Nothing is uploaded.",
+        t("report.network.body"),
         "",
-        "## Plugins",
+        t("report.plugins"),
         "",
     ]
-    plugins = report.facts.get("plugins") or []
+    plugins = facts.get("plugins") or []
     if not plugins:
-        lines.append("_None detected._")
+        lines.append(t("report.no_plugins"))
     else:
         lines.append("| Name | Version | Directory |")
         lines.append("|---|---|---|")
@@ -95,7 +104,7 @@ def _markdown(report: Report) -> str:
         "",
         "---",
         "",
-        "This report was generated by DeckDoctor. It does not restart services, apply updates, or modify permissions.",
+        t("report.footer"),
         "",
     ]
     return "\n".join(lines)

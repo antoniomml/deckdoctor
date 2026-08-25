@@ -4,13 +4,12 @@ from deckdoctor.checks._util import first_line, result
 from deckdoctor.context import DiagnosticContext
 from deckdoctor.models import CheckResult, EvidenceSource, Status
 
-
 ID = "SYS-OS-CHANNEL"
 TITLE = "SteamOS channel"
 
 
 def run(ctx: DiagnosticContext) -> CheckResult:
-    if ctx.facts.get("is_steamos") is False:
+    if ctx.facts.is_steamos is False:
         return result(
             ID,
             TITLE,
@@ -36,7 +35,7 @@ def run(ctx: DiagnosticContext) -> CheckResult:
         text = (proc.stdout or proc.stderr).strip()
         if proc.ok and text:
             channel = first_line(text, 80)
-            ctx.facts["os_channel"] = channel
+            ctx.facts.os_channel = channel
             return result(
                 ID,
                 TITLE,

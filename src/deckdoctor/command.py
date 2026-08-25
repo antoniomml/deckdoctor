@@ -5,7 +5,6 @@ import subprocess
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 
-
 # Commands the tool must never invoke. Defense in depth; checks should not
 # construct these argv lists either.
 _FORBIDDEN_BINARIES = frozenset(
@@ -21,6 +20,26 @@ _FORBIDDEN_BINARIES = frozenset(
 )
 _FORBIDDEN_SYSTEMCTL = frozenset({"start", "stop", "restart", "reload", "mask", "unmask", "enable", "disable"})
 _FORBIDDEN_FLATPAK = frozenset({"update", "uninstall", "install", "remove", "repair", "mask", "pin"})
+# Flags that consume the following argv token.
+_VALUE_FLAGS = frozenset(
+    {
+        "-p",
+        "-o",
+        "-n",
+        "-H",
+        "-M",
+        "--property",
+        "--type",
+        "--output",
+        "--lines",
+        "--host",
+        "--machine",
+        "--columns",
+        "--installation",
+        "--arch",
+        "--timeout",
+    }
+)
 
 
 @dataclass(frozen=True)
@@ -37,21 +56,50 @@ class CommandResult:
         return self.exit_code == 0 and not self.timed_out and self.error is None
 
 
+def _non_option_args(argv: Sequence[str]) -> list[str]:
+    """Skip flags so ``systemctl --user start`` is still recognised as start."""
+    out: list[str] = []
+    i = 1
+    while i < len(argv):
+        arg = argv[i]
+        if arg == "--":
+            out.extend(argv[i + 1 :])
+            break
+        if arg.startswith("-"):
+            name, eq, _rest = arg.partition("=")
+            if eq:
+                i += 1
+                continue
+            if name in _VALUE_FLAGS and i + 1 < len(argv) and not argv[i + 1].startswith("-"):
+                i += 2
+                continue
+            i += 1
+            continue
+        out.append(arg)
+        i += 1
+    return out
+
+
 def _guard(argv: Sequence[str]) -> None:
     if not argv:
         raise ValueError("empty argv")
     binary = os.path.basename(argv[0])
     if binary in _FORBIDDEN_BINARIES:
         raise PermissionError(f"refusing to run mutating command: {argv[0]}")
-    if binary == "systemctl" and len(argv) > 1 and argv[1] in _FORBIDDEN_SYSTEMCTL:
-        raise PermissionError(f"refusing mutating systemctl: {argv[1]}")
-    if binary == "flatpak" and len(argv) > 1 and argv[1] in _FORBIDDEN_FLATPAK:
-        # repair --dry-run is read-only and is allowed if we ever add it.
-        if argv[1] == "repair" and "--dry-run" in argv:
+    verbs = _non_option_args(argv)
+    if binary == "systemctl":
+        if verbs and verbs[0] in _FORBIDDEN_SYSTEMCTL:
+            raise PermissionError(f"refusing mutating systemctl: {verbs[0]}")
+    if binary == "flatpak":
+        if verbs and verbs[0] in _FORBIDDEN_FLATPAK:
+            if verbs[0] == "repair" and "--dry-run" in argv:
+                return
+            raise PermissionError(f"refusing mutating flatpak: {verbs[0]}")
+    if binary == "steamos-update":
+        if any(a in {"-h", "--help"} for a in argv[1:]) and not verbs:
             return
-        raise PermissionError(f"refusing mutating flatpak: {argv[1]}")
-    if binary == "steamos-update" and (len(argv) == 1 or argv[1] not in {"check", "--help", "-h"}):
-        raise PermissionError("refusing steamos-update without check")
+        if not verbs or verbs[0] != "check":
+            raise PermissionError("refusing steamos-update without check")
 
 
 class CommandRunner:
@@ -67,6 +115,15 @@ class CommandRunner:
     ) -> CommandResult:
         argv_t = tuple(argv)
         _guard(argv_t)
+        if timeout <= 0:
+            return CommandResult(
+                argv=argv_t,
+                exit_code=124,
+                stdout="",
+                stderr="timed out",
+                timed_out=True,
+                error="timeout",
+            )
         merged_env = os.environ.copy()
         merged_env["LANG"] = "C"
         merged_env["LC_ALL"] = "C"
@@ -119,12 +176,13 @@ class CommandRunner:
 
 
 class FakeCommandRunner(CommandRunner):
-    """Map exact argv tuples (or prefixes) to canned results."""
+    """Map exact argv tuples to canned results. Prefix match is exact-tuple first only."""
 
     def __init__(self, mapping: dict[tuple[str, ...], CommandResult] | None = None) -> None:
         self.mapping: dict[tuple[str, ...], CommandResult] = mapping or {}
         self.calls: list[tuple[str, ...]] = []
         self.default_not_found = True
+        self.allow_prefix = False
 
     def add(self, argv: Sequence[str], result: CommandResult) -> None:
         self.mapping[tuple(argv)] = result
@@ -140,11 +198,21 @@ class FakeCommandRunner(CommandRunner):
         argv_t = tuple(argv)
         _guard(argv_t)
         self.calls.append(argv_t)
+        if timeout <= 0:
+            return CommandResult(
+                argv=argv_t,
+                exit_code=124,
+                stdout="",
+                stderr="timed out",
+                timed_out=True,
+                error="timeout",
+            )
         if argv_t in self.mapping:
             return self.mapping[argv_t]
-        for key, result in self.mapping.items():
-            if argv_t[: len(key)] == key:
-                return result
+        if self.allow_prefix:
+            for key, result in self.mapping.items():
+                if argv_t[: len(key)] == key:
+                    return result
         if self.default_not_found:
             return CommandResult(
                 argv=argv_t,

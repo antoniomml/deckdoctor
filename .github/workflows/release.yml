@@ -1,0 +1,32 @@
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e5322e6fb2ccb7 # v5.6.0
+        with:
+          python-version: "3.12"
+      - name: Install
+        run: pip install -e ".[dev]"
+      - name: Build onefile binary
+        run: python pack/build_pyinstaller.py
+      - name: Checksums
+        run: ( cd dist && sha256sum deckdoctor | tee SHA256SUMS )
+      - name: Publish GitHub Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            dist/deckdoctor \
+            dist/SHA256SUMS \
+            --title "DeckDoctor ${GITHUB_REF_NAME}" \
+            --generate-notes

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
+from typing import Any
 
 from deckdoctor.models import CheckResult, EvidenceSource, Severity, Status
 
@@ -17,7 +18,7 @@ def result(
     source: EvidenceSource = EvidenceSource.FILESYSTEM,
     severity: Severity | None = None,
     fact_kind: str = "fact",
-    extra: dict | None = None,
+    extra: dict[str, Any] | None = None,
 ) -> CheckResult:
     if severity is None:
         if status == Status.FAIL:

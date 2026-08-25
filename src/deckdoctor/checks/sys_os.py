@@ -4,7 +4,6 @@ from deckdoctor.checks._util import result
 from deckdoctor.context import DiagnosticContext
 from deckdoctor.models import CheckResult, EvidenceSource, Status
 
-
 ID = "SYS-OS-VERSION"
 TITLE = "SteamOS version"
 
@@ -18,12 +17,12 @@ def run(ctx: DiagnosticContext) -> CheckResult:
     variant = osr.get("VARIANT_ID") or manifest.get("variant") or "unknown"
     distro_id = osr.get("ID", "")
 
-    ctx.facts["os_version"] = str(version)
-    ctx.facts["os_build"] = str(build)
-    ctx.facts["os_variant"] = str(variant)
-    ctx.facts["os_id"] = distro_id
+    ctx.facts.os_version = str(version)
+    ctx.facts.os_build = str(build)
+    ctx.facts.os_variant = str(variant)
+    ctx.facts.os_id = distro_id
 
-    evidence = []
+    evidence: list[str] = []
     if ctx.exists(ctx.os_release_path):
         evidence.append(f"{ctx.os_release_path}: VERSION_ID={version} BUILD_ID={build} ID={distro_id}")
     if manifest:
@@ -41,7 +40,7 @@ def run(ctx: DiagnosticContext) -> CheckResult:
         )
 
     is_steamos = distro_id == "steamos" or "SteamOS" in name
-    ctx.facts["is_steamos"] = is_steamos
+    ctx.facts.is_steamos = is_steamos
     finding = f"{name} {version} (build {build}, variant {variant})"
     if not is_steamos:
         return result(
