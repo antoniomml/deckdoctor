@@ -94,6 +94,36 @@ class Diagnosis:
 
 
 @dataclass
+class FixPlan:
+    """A proposed mutation. Printed before anything is changed."""
+
+    id: str
+    title: str
+    summary: str
+    mutation: str
+    reversible: str
+    related_checks: list[str]
+    risk: str = "low"
+    needs_root: bool = False
+
+
+@dataclass
+class FixResult:
+    id: str
+    ok: bool
+    finding: str
+    evidence: list[str] = field(default_factory=list)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "id": self.id,
+            "ok": self.ok,
+            "finding": self.finding,
+            "evidence": list(self.evidence),
+        }
+
+
+@dataclass
 class Report:
     version: str
     generated_at: str
@@ -103,6 +133,8 @@ class Report:
     locale: str = "en"
     ascii_mode: bool = False
     partial: bool = False
+    verbose: bool = False
+    color: bool = False
 
     @property
     def problems(self) -> list[CheckResult]:
@@ -118,4 +150,5 @@ class Report:
             "problem_count": len(self.problems),
             "locale": self.locale,
             "partial": self.partial,
+            "verbose": self.verbose,
         }

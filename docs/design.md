@@ -1,6 +1,6 @@
 # DeckDoctor design
 
-**Version:** 0.1  
+**Version:** 0.3  
 **Language:** Python 3.11+  
 **License:** MIT  
 **Default posture:** read-only, local-first, no telemetry.
@@ -13,21 +13,24 @@ A user can run `deckdoctor` on a Steam Deck (Desktop Mode or SSH) and get, in se
 2. If something is wrong: **what** we observed, **why** it matters, and a **safe** next step.
 3. A sanitised Markdown report suitable for GitHub issues / Discord.
 
-Non-goals for 0.1: automatic repair, hardware diagnostics, Proton/game troubleshooting, a Decky plugin UI.
+Non-goals for 0.3: automatic repair as the default command, hardware diagnostics, Proton/game troubleshooting, a Decky plugin UI. Opt-in `deckdoctor fix --yes` is the only mutating path.
 
 ## 2. CLI
 
 ```text
-deckdoctor                 # same as diagnose
-deckdoctor diagnose        # run checks, print human summary
+deckdoctor                 # same as diagnose (compact, read-only)
+deckdoctor diagnose
+deckdoctor -v              # every check
 deckdoctor report          # diagnose + write deckdoctor-report.md
-deckdoctor --json          # machine-readable result on stdout
-deckdoctor --no-network    # skip checks that need the internet
-deckdoctor --ascii         # ASCII status marks
-deckdoctor --only ID,ID    # run a subset of checks
-deckdoctor --timeout N     # global deadline (seconds; 0 disables)
+deckdoctor checks          # list check IDs
+deckdoctor fix             # print plan; apply only with --yes
+deckdoctor --json
+deckdoctor --no-network
+deckdoctor --ascii
+deckdoctor --only ID,ID
+deckdoctor --timeout N
 deckdoctor --lang es|en
-deckdoctor --output PATH   # report path (default: ./deckdoctor-report.md)
+deckdoctor --output PATH
 deckdoctor --version
 ```
 
@@ -101,7 +104,7 @@ All subprocess work goes through one type:
 
 Forbidden: `systemctl restart/start/stop`, `chmod`/`chown`, `rm`, `flatpak update` (mutating), `flatpak uninstall`, `kill`.
 
-Allowed mutating *nothing*. Creating `deckdoctor-report.md` in the cwd (or `--output`) is the only write.
+Allowed mutating *nothing* in diagnose. Creating `deckdoctor-report.md` is the only diagnose write. `deckdoctor fix --yes` uses a separate FixExecutor whitelist (`chmod +x` PluginLoader, CEF enable file, `systemctl enable --now plugin_loader.service`, `flatpak update -y`).
 
 ### 4.5 DiagnosticContext
 
@@ -214,6 +217,13 @@ src/deckdoctor/
   sanitizer.py
   report.py
   renderer.py
+  fixes/
+    __init__.py
+    executor.py
+    pluginloader_exec.py
+    cef_debug.py
+    decky_service.py
+    flatpak_update.py
   checks/
     __init__.py        # registry
     sys_os.py
@@ -240,7 +250,7 @@ src/deckdoctor/
     autoflatpaks.py
 ```
 
-Fixes in a later version live in `deckdoctor/fixes/` with an explicit contract (what changes, reversibility, confirmation). None ship in 0.1.
+Fixes live in `deckdoctor/fixes/` with an explicit contract (what changes, reversibility, `--yes`). Diagnose never calls them.
 
 ## 10. Testing
 

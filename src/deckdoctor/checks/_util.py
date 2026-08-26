@@ -4,6 +4,7 @@ import re
 from collections.abc import Iterable
 from typing import Any
 
+from deckdoctor.context import DiagnosticContext
 from deckdoctor.models import CheckResult, EvidenceSource, Severity, Status
 
 
@@ -66,6 +67,31 @@ def version_is_newer(candidate: str, current: str) -> bool | None:
     left = left + (0,) * (width - len(left))
     right = right + (0,) * (width - len(right))
     return left > right
+
+
+def skip_not_steamos(ctx: DiagnosticContext, check_id: str, title: str) -> CheckResult | None:
+    if ctx.facts.is_steamos is True:
+        return None
+    return result(
+        check_id,
+        title,
+        Status.SKIPPED,
+        ctx.tr("skip.not_steamos"),
+        explanation=ctx.tr("skip.not_steamos.explain"),
+        source=EvidenceSource.OS_METADATA,
+    )
+
+
+def skip_no_decky(ctx: DiagnosticContext, check_id: str, title: str, *, source: EvidenceSource) -> CheckResult | None:
+    if ctx.facts.decky_installed is not False:
+        return None
+    return result(
+        check_id,
+        title,
+        Status.SKIPPED,
+        ctx.tr("skip.decky_missing"),
+        source=source,
+    )
 
 
 def first_line(text: str, limit: int = 240) -> str:

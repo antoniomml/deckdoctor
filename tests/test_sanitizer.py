@@ -4,9 +4,9 @@ from deckdoctor.sanitizer import Sanitizer
 
 
 def test_sanitizer_replaces_home_user_host_email_ip_mac_steam_secrets() -> None:
-    san = Sanitizer(user="antonio", home="/home/antonio", hostname="steamdeck")
+    san = Sanitizer(user="antonio", home="/home/antonio", hostname="kitchen-deck")
     raw = """
-user antonio on steamdeck
+user antonio on kitchen-deck
 path /home/antonio/homebrew/services/PluginLoader
 mail antonio@example.com
 lan 192.168.1.27 and also 10.0.0.5
@@ -26,6 +26,7 @@ abcdef
     assert "/home/antonio" not in out
     assert "/home/<USER>" in out
     assert "<USER>" in out
+    assert "kitchen-deck" not in out
     assert "<HOSTNAME>" in out
     assert "<EMAIL>" in out
     assert "<PRIVATE_IP_1>" in out
@@ -66,6 +67,13 @@ def test_apply_obj_does_not_break_json_types() -> None:
     assert out["count"] == 2
     assert out["user"] == "<USER>"
     assert out["nested"][1] == 1
+
+
+def test_generic_hostname_is_not_redacted() -> None:
+    san = Sanitizer(user="deck", home="/home/deck", hostname="steamdeck")
+    out = san.apply("SteamOS variant steamdeck on host steamdeck")
+    assert "steamdeck" in out
+    assert "<HOSTNAME>" not in out
 
 
 def test_short_username_is_not_replaced() -> None:

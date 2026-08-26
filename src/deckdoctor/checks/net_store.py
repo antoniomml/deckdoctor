@@ -14,12 +14,13 @@ STORE_URL = "https://plugins.deckbrew.xyz/plugins"
 
 
 def run(ctx: DiagnosticContext) -> CheckResult:
+    title = ctx.tr(f"title.{ID}")
     if not ctx.network_enabled:
         return result(
             ID,
-            TITLE,
+            title,
             Status.SKIPPED,
-            "Network checks disabled",
+            ctx.tr("skip.no_network"),
             source=EvidenceSource.NETWORK,
         )
 
@@ -29,11 +30,11 @@ def run(ctx: DiagnosticContext) -> CheckResult:
         ctx.facts.store_ok = False
         return result(
             ID,
-            TITLE,
+            title,
             Status.FAIL,
-            "Decky Plugin Store is unreachable",
-            explanation="Local Decky can still work while the store is down. Installing or updating plugins from the store will fail.",
-            recommendation="Retry later. You can still sideload from a zip if you trust the source.",
+            ctx.tr("net.store.down"),
+            explanation=ctx.tr("net.store.down.explain"),
+            recommendation=ctx.tr("net.store.down.rec"),
             evidence=evidence + [resp.body[:200]],
             source=EvidenceSource.NETWORK,
         )
@@ -44,9 +45,9 @@ def run(ctx: DiagnosticContext) -> CheckResult:
     if not looks_json:
         return result(
             ID,
-            TITLE,
+            title,
             Status.WARNING,
-            "Plugin Store responded but the body is not JSON",
+            ctx.tr("net.store.not_json"),
             evidence=evidence + [body[:200]],
             source=EvidenceSource.NETWORK,
         )
@@ -59,10 +60,10 @@ def run(ctx: DiagnosticContext) -> CheckResult:
     evidence.append(f"{len(catalog)} catalog entries parsed")
     return result(
         ID,
-        TITLE,
+        title,
         Status.PASS,
-        "Plugin Store endpoint responded with JSON",
-        explanation="This checks plugins.deckbrew.xyz/plugins only, not each plugin artifact CDN.",
+        ctx.tr("net.store.ok"),
+        explanation=ctx.tr("net.store.ok.explain"),
         evidence=evidence,
         source=EvidenceSource.NETWORK,
         extra={"count": len(catalog)},

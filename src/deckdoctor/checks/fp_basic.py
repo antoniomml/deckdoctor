@@ -9,24 +9,26 @@ TITLE = "Flatpak basics"
 
 
 def run(ctx: DiagnosticContext) -> CheckResult:
+    title = ctx.tr(f"title.{ID}")
     version = ctx.run(["flatpak", "--version"])
     if version.error == "not_found":
         ctx.facts.flatpak_available = False
+        on_steamos = ctx.facts.is_steamos is True
         return result(
             ID,
-            TITLE,
-            Status.FAIL,
-            "flatpak is not installed or not on PATH",
-            explanation="AutoFlatpaks and Desktop software management need the Flatpak CLI.",
+            title,
+            Status.FAIL if on_steamos else Status.INFO,
+            ctx.tr("fp.basic.missing"),
+            explanation=ctx.tr("fp.basic.missing.explain" if on_steamos else "fp.basic.missing.info.explain"),
             source=EvidenceSource.FLATPAK,
         )
     if not version.ok:
         ctx.facts.flatpak_available = False
         return result(
             ID,
-            TITLE,
+            title,
             Status.FAIL,
-            "flatpak --version failed",
+            ctx.tr("fp.basic.version_fail"),
             evidence=[version.stderr.strip() or version.stdout.strip()],
             source=EvidenceSource.FLATPAK,
         )
@@ -38,19 +40,19 @@ def run(ctx: DiagnosticContext) -> CheckResult:
     if remotes.timed_out:
         return result(
             ID,
-            TITLE,
+            title,
             Status.UNKNOWN,
-            "flatpak remotes timed out",
+            ctx.tr("fp.basic.timeout"),
             evidence=evidence,
             source=EvidenceSource.FLATPAK,
         )
     if not remotes.ok:
         return result(
             ID,
-            TITLE,
+            title,
             Status.FAIL,
-            "Could not list Flatpak remotes",
-            explanation="The CLI exists but listing remotes failed. Custom remotes are not treated as errors when listing succeeds.",
+            ctx.tr("fp.basic.list_fail"),
+            explanation=ctx.tr("fp.basic.list_fail.explain"),
             evidence=evidence + [remotes.stderr.strip()[:400] or remotes.stdout[:400]],
             source=EvidenceSource.FLATPAK,
         )
@@ -62,10 +64,10 @@ def run(ctx: DiagnosticContext) -> CheckResult:
     evidence.extend(lines[:15])
     return result(
         ID,
-        TITLE,
+        title,
         Status.PASS,
-        f"Flatpak working, {len(lines)} remote(s) configured",
-        explanation="Custom remotes are allowed. Disabled or extra remotes are not automatically failures.",
+        ctx.tr("fp.basic.ok", count=len(lines)),
+        explanation=ctx.tr("fp.basic.ok.explain"),
         evidence=evidence,
         source=EvidenceSource.FLATPAK,
         extra={"remotes": len(lines)},

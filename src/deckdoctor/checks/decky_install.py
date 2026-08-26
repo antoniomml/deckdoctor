@@ -42,6 +42,7 @@ def _read_branch(ctx: DiagnosticContext) -> str | None:
 
 
 def run(ctx: DiagnosticContext) -> CheckResult:
+    title = ctx.tr(f"title.{ID}")
     home = ctx.decky_home
     loader = ctx.plugin_loader
     evidence: list[str] = []
@@ -52,14 +53,13 @@ def run(ctx: DiagnosticContext) -> CheckResult:
         ctx.facts.plugin_loader_present = False
         return result(
             ID,
-            TITLE,
-            Status.FAIL,
-            "Decky does not appear to be installed",
-            explanation=f"No homebrew directory at {home}.",
-            recommendation="Install Decky with the official installer: https://github.com/SteamDeckHomebrew/decky-installer",
+            title,
+            Status.INFO,
+            ctx.tr("decky.install.absent"),
+            explanation=ctx.tr("decky.install.absent.explain", home=home),
+            recommendation=ctx.tr("decky.install.absent.rec"),
             evidence=[f"missing {home}"],
             source=EvidenceSource.DECKY_METADATA,
-            severity=Severity.HIGH,
             extra={"installed": False},
         )
 
@@ -88,18 +88,11 @@ def run(ctx: DiagnosticContext) -> CheckResult:
             ctx.facts.plugin_loader_present = ctx.exists(loader)
             return result(
                 ID,
-                TITLE,
+                title,
                 Status.FAIL,
-                "Decky systemd unit looks like a GitHub rate-limit error page",
-                explanation=(
-                    "plugin_loader.service contains GitHub HTML (429 Too Many Requests) instead of a unit file. "
-                    "The installer saved an API error as the service."
-                ),
-                recommendation=(
-                    "Do not reboot-loop the installer on the same network. Check GitHub rate limit with DeckDoctor, "
-                    "wait for reset or switch networks, then reinstall using the official installer. "
-                    "The CLI installer refuses to proceed when the API is rate-limited; the GUI historically did not."
-                ),
+                ctx.tr("decky.install.unit429"),
+                explanation=ctx.tr("decky.install.unit429.explain"),
+                recommendation=ctx.tr("decky.install.unit429.rec"),
                 evidence=evidence + [f"{ctx.systemd_unit_path} starts with: {unit_text[:120]!r}"],
                 source=EvidenceSource.DECKY_METADATA,
                 severity=Severity.HIGH,
@@ -116,17 +109,11 @@ def run(ctx: DiagnosticContext) -> CheckResult:
         ctx.facts.decky_incomplete = True
         return result(
             ID,
-            TITLE,
+            title,
             Status.FAIL,
-            "Decky installation appears incomplete: PluginLoader is missing",
-            explanation=(
-                f"{home} exists but {loader} does not. "
-                "This matches a failed installer run that still reported success, often after GitHub API rate limiting."
-            ),
-            recommendation=(
-                "Run `deckdoctor` network checks. If GitHub API remaining is 0, wait or change network. "
-                "Reinstall with the official decky-installer. Do not chmod 777."
-            ),
+            ctx.tr("decky.install.incomplete"),
+            explanation=ctx.tr("decky.install.incomplete.explain", home=home, loader=loader),
+            recommendation=ctx.tr("decky.install.incomplete.rec"),
             evidence=evidence + [f"missing {loader}"],
             source=EvidenceSource.DECKY_METADATA,
             severity=Severity.HIGH,
@@ -139,17 +126,17 @@ def run(ctx: DiagnosticContext) -> CheckResult:
     if not executable:
         return result(
             ID,
-            TITLE,
+            title,
             Status.FAIL,
-            "PluginLoader exists but is not executable",
-            explanation="systemd cannot spawn a non-executable PluginLoader (Permission denied / EXEC spawn failure).",
-            recommendation="Re-run the official installer, which sets the executable bit. Do not chmod 777 the tree.",
+            ctx.tr("decky.install.not_exec"),
+            explanation=ctx.tr("decky.install.not_exec.explain"),
+            recommendation=ctx.tr("decky.install.not_exec.rec"),
             evidence=evidence,
             source=EvidenceSource.DECKY_METADATA,
             severity=Severity.HIGH,
         )
 
-    finding = "Installed"
+    finding = ctx.tr("decky.install.ok")
     if version_text:
         finding += f" {version_text}"
     if branch:
@@ -174,11 +161,11 @@ def run(ctx: DiagnosticContext) -> CheckResult:
         if latest != version_text and not version_text.startswith(latest):
             return result(
                 ID,
-                TITLE,
+                title,
                 Status.INFO,
-                f"{finding}; latest stable appears to be {latest}",
-                explanation="Compared local .loader.version to the GitHub releases/latest redirect (not the REST API).",
-                recommendation="Update Decky from Desktop Mode with the official installer if the QAM updater is unavailable.",
+                ctx.tr("decky.install.newer", finding=finding, latest=latest),
+                explanation=ctx.tr("decky.install.newer.explain"),
+                recommendation=ctx.tr("decky.install.newer.rec"),
                 evidence=evidence,
                 source=EvidenceSource.DECKY_METADATA,
                 extra=extra,
@@ -186,10 +173,10 @@ def run(ctx: DiagnosticContext) -> CheckResult:
 
     return result(
         ID,
-        TITLE,
+        title,
         Status.PASS,
         finding,
-        explanation="Homebrew tree, PluginLoader binary, and version metadata look present.",
+        explanation=ctx.tr("decky.install.ok.explain"),
         evidence=evidence,
         source=EvidenceSource.DECKY_METADATA,
         extra=extra,

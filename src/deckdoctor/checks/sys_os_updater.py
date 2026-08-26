@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from deckdoctor.checks._util import first_line, result
+from deckdoctor.checks._util import first_line, result, skip_not_steamos
 from deckdoctor.command import CommandResult
 from deckdoctor.context import DiagnosticContext
 from deckdoctor.models import CheckResult, EvidenceSource, Severity, Status
@@ -36,23 +36,30 @@ def _combined(proc: CommandResult) -> str:
     return f"{proc.stdout}\n{proc.stderr}".lower()
 
 
+def _looks_up_to_date(blob: str) -> bool:
+    return any(m in blob for m in _UP_TO_DATE_MARKERS)
+
+
+def _looks_update_available(blob: str) -> bool:
+    if _looks_up_to_date(blob):
+        return False
+    return any(m in blob for m in _UPDATE_MARKERS)
+
+
 def run(ctx: DiagnosticContext) -> CheckResult:
-    if ctx.facts.is_steamos is False:
-        return result(
-            ID,
-            TITLE,
-            Status.SKIPPED,
-            "Not SteamOS",
-            source=EvidenceSource.OS_METADATA,
-        )
+    title = ctx.tr(f"title.{ID}")
+    skipped = skip_not_steamos(ctx, ID, title)
+    if skipped:
+        return skipped
 
     attempts: list[str] = []
-    commands = (
-        (["atomupd-manager", "get-update-status"], 20.0),
+    local = ((["atomupd-manager", "get-update-status"], 20.0),)
+    remote = (
         (["atomupd-manager", "check"], 30.0),
         (["steamos-update", "check"], 30.0),
         (["steamos-atomupd-client", "--query-only"], 30.0),
     )
+    commands = local + (remote if ctx.network_enabled else ())
 
     ran_any = False
     for argv, timeout in commands:
@@ -69,14 +76,11 @@ def run(ctx: DiagnosticContext) -> CheckResult:
             ctx.facts.os_updater = "timeout"
             return result(
                 ID,
-                TITLE,
+                title,
                 Status.FAIL,
-                "SteamOS updater timed out while checking for updates",
-                explanation=(
-                    "The updater did not finish a read-only check in time. "
-                    "This is not the same as being up to date."
-                ),
-                recommendation="Retry from Desktop Mode. If it keeps timing out, the atomupd service or network path to steamdeck-atomupd.steamos.cloud may be failing.",
+                ctx.tr("sys.updater.timeout"),
+                explanation=ctx.tr("sys.updater.timeout.explain"),
+                recommendation=ctx.tr("sys.updater.timeout.rec"),
                 evidence=attempts + [proc.stderr.strip()[:500]],
                 source=EvidenceSource.OS_METADATA,
                 severity=Severity.HIGH,
@@ -86,54 +90,52 @@ def run(ctx: DiagnosticContext) -> CheckResult:
             ctx.facts.os_updater = "error"
             return result(
                 ID,
-                TITLE,
+                title,
                 Status.FAIL,
-                "SteamOS updater could not check for updates",
-                explanation="A local update query failed. DeckDoctor will not assume the system is current.",
-                recommendation="Inspect atomupd/rauc journals. Do not treat this as 'up to date'.",
+                ctx.tr("sys.updater.error"),
+                explanation=ctx.tr("sys.updater.error.explain"),
+                recommendation=ctx.tr("sys.updater.error.rec"),
                 evidence=attempts,
                 source=EvidenceSource.OS_METADATA,
                 severity=Severity.HIGH,
             )
 
-        if any(m in blob for m in _UPDATE_MARKERS) or (proc.ok and "update available" in blob):
+        if _looks_update_available(blob):
             ctx.facts.os_updater = "update_available"
             return result(
                 ID,
-                TITLE,
+                title,
                 Status.WARNING,
-                "A SteamOS update appears to be available",
-                explanation="The local updater reported an update. DeckDoctor did not install it.",
-                recommendation="Apply the update from SteamOS Settings when you are ready. Reboot if the updater asks.",
+                ctx.tr("sys.updater.available"),
+                explanation=ctx.tr("sys.updater.available.explain"),
+                recommendation=ctx.tr("sys.updater.available.rec"),
                 evidence=attempts,
                 source=EvidenceSource.OS_METADATA,
                 severity=Severity.LOW,
                 extra={"update_available": True},
             )
 
-        if proc.ok and (any(m in blob for m in _UP_TO_DATE_MARKERS) or not blob.strip()):
-            # empty successful check is treated cautiously as unknown unless markers match
-            if any(m in blob for m in _UP_TO_DATE_MARKERS):
-                ctx.facts.os_updater = "up_to_date"
-                return result(
-                    ID,
-                    TITLE,
-                    Status.PASS,
-                    "SteamOS updater reports no update available",
-                    explanation="Based on a local query-only check, not a web scrape.",
-                    evidence=attempts,
-                    source=EvidenceSource.OS_METADATA,
-                    extra={"update_available": False},
-                )
+        if proc.ok and _looks_up_to_date(blob):
+            ctx.facts.os_updater = "up_to_date"
+            return result(
+                ID,
+                title,
+                Status.PASS,
+                ctx.tr("sys.updater.current"),
+                explanation=ctx.tr("sys.updater.current.explain"),
+                evidence=attempts,
+                source=EvidenceSource.OS_METADATA,
+                extra={"update_available": False},
+            )
 
         if not proc.ok:
             ctx.facts.os_updater = "error"
             return result(
                 ID,
-                TITLE,
+                title,
                 Status.FAIL,
-                "SteamOS updater returned an error",
-                explanation="Non-zero exit while querying updates. This is not interpreted as 'up to date'.",
+                ctx.tr("sys.updater.nonzero"),
+                explanation=ctx.tr("sys.updater.nonzero.explain"),
                 evidence=attempts,
                 source=EvidenceSource.OS_METADATA,
                 severity=Severity.HIGH,
@@ -142,10 +144,10 @@ def run(ctx: DiagnosticContext) -> CheckResult:
     if not ran_any:
         return result(
             ID,
-            TITLE,
+            title,
             Status.SKIPPED,
-            "No SteamOS updater tools found",
-            explanation="atomupd-manager, steamos-update, and steamos-atomupd-client are all missing.",
+            ctx.tr("sys.updater.missing"),
+            explanation=ctx.tr("sys.updater.missing.explain"),
             evidence=attempts,
             source=EvidenceSource.OS_METADATA,
         )
@@ -153,10 +155,10 @@ def run(ctx: DiagnosticContext) -> CheckResult:
     ctx.facts.os_updater = "unknown"
     return result(
         ID,
-        TITLE,
+        title,
         Status.UNKNOWN,
-        "Could not determine SteamOS update state",
-        explanation="A query ran but the output was not a known 'up to date' or 'update available' message.",
+        ctx.tr("sys.updater.unknown"),
+        explanation=ctx.tr("sys.updater.unknown.explain"),
         evidence=attempts,
         source=EvidenceSource.OS_METADATA,
     )

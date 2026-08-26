@@ -1,62 +1,67 @@
 # DeckDoctor
 
-Read-only diagnostics for **SteamOS**, **Decky Loader**, plugins, and **Flatpak**.
+[![CI](https://github.com/antoniomml/deckdoctor/actions/workflows/ci.yml/badge.svg)](https://github.com/antoniomml/deckdoctor/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/antoniomml/deckdoctor)](https://github.com/antoniomml/deckdoctor/releases/latest)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
+**Diagnose SteamOS, Decky Loader, plugins, and Flatpak — locally, in plain language.**
+
+Decky se rompe, el QAM está vacío, Flatpak está viejo, SteamOS dice una cosa y el Deck hace otra. DeckDoctor mira el sistema y te dice **qué ha visto**, **por qué importa** y **qué es seguro hacer**.
+
+No es un plugin de Decky (funciona aunque Decky esté caído). No telemetría. El diagnóstico no toca nada. Los arreglos son opt-in y hay que pedirlos con `--yes`.
 
 ```bash
+curl -L https://raw.githubusercontent.com/antoniomml/deckdoctor/main/scripts/install.sh | sh
 deckdoctor
 ```
 
-DeckDoctor explains what is going on even if you do not use `systemctl`, `journalctl`, or `flatpak`. It does **not** repair your Deck, does **not** depend on Decky (so it still works when Decky is broken), and does **not** phone home.
+---
 
-Spanish / English: this README is bilingual on purpose.
+## Qué ves
+
+```text
+DeckDoctor 0.3.0
+SteamOS 3.7.13  ·  Decky Loader 3.1.11
+
+  ·  Problems  2  ·  Diagnoses  1
+
+Diagnosis
+  LIKELY CAUSE · medium
+  Decky backend is installed but the service is not running
+    plugin_loader.service is disabled or inactive.
+    → Enable and start plugin_loader.service.
+
+Problems
+  ✗  DECKY-SERVICE  HIGH
+      plugin_loader.service is not running
+      → deckdoctor fix
+
+  ⚠  FP-UPDATES  MEDIUM
+      3 Flatpak apps have updates
+      → flatpak update -y
+
+Next
+deckdoctor report      sanitised diagnostic report
+deckdoctor -v          every check
+deckdoctor fix         2 safe fix(es) available
+diagnose never mutates the system. fix prints a plan and needs --yes.
+```
+
+Español: `deckdoctor --lang es` (o `LANG=es_ES.UTF-8`).
 
 ---
 
-## What it is / Qué es
-
-A local CLI that:
-
-1. **Detects** common SteamOS / Decky / plugin / Flatpak problems
-2. **Explains** them in plain language (FACT vs LIKELY CAUSE)
-3. **Recommends** a safe next step
-4. Optionally writes a **sanitised** Markdown report for GitHub or Discord
-
-It is **not**:
-
-- a Decky plugin
-- an automatic fixer (`systemctl restart`, `flatpak update`, `chmod`, …)
-- a hardware diagnostic (see DeckDoc for that)
-- a Proton / game troubleshooter
-- telemetry
-
-## Platforms / Dónde corre
-
-Primary target: **Steam Deck + SteamOS** (Desktop Mode or SSH). The PyInstaller binary is x86_64 Linux.
-
-It also **runs** on other x86_64 Linux handhelds and distros (Bazzite, ChimeraOS, HoloISO, Nobara, …). Behaviour:
-
-| Stack | What happens off SteamOS |
-|---|---|
-| SteamOS updater / channel / overlay / pending A/B reboot | **Skipped** (those tools and paths are SteamOS-specific) |
-| Decky, plugins, Plugin Store | Run if `~/homebrew` exists |
-| Flatpak (including EOL runtimes) | Run if `flatpak` is on PATH |
-| Steam client / CEF | Run if a Steam datadir is found (`~/.steam/steam` or `~/.local/share/Steam`) |
-
-Bazzite-on-Deck and Bazzite-on-Ally/Legion Go are **best-effort**: same Decky/Flatpak checks, no hardware module, no promise to paper over every image difference. `ID=bazzite` (and a few siblings) is recognised so the CLI says so instead of pretending you are on SteamOS.
-
-Objetivo principal: **Steam Deck + SteamOS**. En Bazzite y otras distros x86_64 el binario arranca; los checks de atomupd/RAUC se omiten y Decky/Flatpak siguen si están instalados. No cubre hardware ni diferencias de cada imagen.
-
 ## Install / Instalación
 
-Requires a Steam Deck or similar **x86_64 Linux** handheld. No `pacman`, no Flatpak, no Decky.
+Binario **x86_64 Linux** (Steam Deck, Bazzite, etc.). Sin `pacman`, sin Flatpak, sin Decky.
 
-**Option A — install script** (downloads the latest release binary and verifies `SHA256SUMS`):
+**A — script** (descarga el último release y comprueba `SHA256SUMS`):
 
 ```bash
 curl -L https://raw.githubusercontent.com/antoniomml/deckdoctor/main/scripts/install.sh | sh
 ```
 
-**Option B — download the binary** into `~/.local/bin` and check the sums file:
+**B — a mano:**
 
 ```bash
 mkdir -p ~/.local/bin
@@ -66,7 +71,7 @@ curl -L https://github.com/antoniomml/deckdoctor/releases/latest/download/SHA256
 chmod +x ~/.local/bin/deckdoctor
 ```
 
-**Option C — from source** (developers):
+**C — desde fuente** (desarrollo):
 
 ```bash
 python3 -m venv .venv
@@ -75,48 +80,100 @@ pip install -e ".[dev]"
 deckdoctor --help
 ```
 
-## Usage / Uso
+La primera arrancada del binario PyInstaller tarda unos segundos. CI lo construye en Ubuntu; en SteamOS es best-effort.
+
+---
+
+## Commands / Comandos
 
 ```text
-deckdoctor                 # diagnose (default)
-deckdoctor diagnose
-deckdoctor report          # writes ./deckdoctor-report.md (sanitised)
+deckdoctor                 # diagnose (por defecto) — compacto, solo lectura
+deckdoctor -v              # cada check, incluidos PASS / SKIPPED
+deckdoctor report          # escribe ./deckdoctor-report.md (sanitizado)
+deckdoctor checks          # IDs para --only
+deckdoctor fix             # plan de arreglos seguros (no aplica nada)
+deckdoctor fix --yes       # aplica ese plan
+deckdoctor fix decky-service --yes
 deckdoctor --json
-deckdoctor --no-network    # skip GitHub / store / remote Flatpak / updater queries
-deckdoctor --lang es       # Spanish UI chrome (or LANG=es_ES.UTF-8)
-deckdoctor --ascii         # ASCII marks (OK / X / !) instead of Unicode
+deckdoctor --no-network    # sin GitHub / store / remotes Flatpak
+deckdoctor --lang es
+deckdoctor --ascii         # marcas ASCII (OK / X / !)
 deckdoctor --only SYS-DISK,DECKY-INSTALL
-deckdoctor --timeout 40    # global deadline in seconds (0 disables; default 60)
+deckdoctor --timeout 40    # deadline global en segundos (0 = sin límite; default 60)
 ```
 
-Exit code `1` means at least one **FAIL**. Warnings do not fail the process. Exit code `2` is an internal tool error.
+Código de salida `1`: hay un **FAIL**, o un fix pedido que no se aplicó. Los WARNING no fallan el diagnose. `2` es error interno.
 
-The PyInstaller onefile binary unpacks on first launch; that can take a few seconds. CI builds it on Ubuntu — treat it as best-effort on SteamOS.
+`deckdoctor fix` solo ofrece mutaciones que puede nombrar:
+
+| id | qué hace |
+|---|---|
+| `pluginloader-exec` | `chmod +x` en PluginLoader (nunca `chmod 777`) |
+| `cef-debug` | crea `~/.steam/steam/.cef-enable-remote-debugging` |
+| `decky-service` | `systemctl enable --now plugin_loader.service` (puede pedir root; DeckDoctor **nunca** lanza `sudo`) |
+| `flatpak-update` | `flatpak update -y` si había actualizaciones listadas |
+
+No reinicia, no mata procesos, no desinstala Flatpaks, no escribe el root de solo lectura, no reinstala Decky.
+
+---
+
+## Platforms / Dónde corre
+
+Objetivo principal: **Steam Deck + SteamOS** (Desktop Mode o SSH).
+
+También arranca en otros Linux x86_64 (Bazzite, ChimeraOS, HoloISO, Nobara, …):
+
+| Stack | Fuera de SteamOS |
+|---|---|
+| Updater / canal / overlay / reboot A/B de SteamOS | **Omitido** |
+| Decky, plugins, Plugin Store | Si existe `~/homebrew` |
+| Flatpak (incl. runtimes EOL) | Si `flatpak` está en PATH |
+| Cliente Steam / CEF | Si hay datadir (`~/.steam/steam` o `~/.local/share/Steam`) |
+
+Bazzite-on-Deck y Bazzite-on-Ally/Legion Go son **best-effort**: mismos checks de Decky/Flatpak, sin módulo de hardware, sin promesa de cubrir cada imagen.
+
+---
 
 ## Network / Red
 
-Only when a check needs it (or unless `--no-network`):
+Solo cuando un check lo necesita (o salvo `--no-network`):
 
 - `https://github.com` (HEAD)
-- `https://api.github.com/rate_limit` (does **not** consume the primary GitHub quota)
-- `https://github.com/SteamDeckHomebrew/decky-loader/releases/latest` (redirect, not the REST list API)
+- `https://api.github.com/rate_limit` (no gasta la cuota principal)
+- `https://github.com/SteamDeckHomebrew/decky-loader/releases/latest`
 - `https://plugins.deckbrew.xyz/plugins`
-- Flatpak remotes already configured on the device
-- SteamOS updater endpoints, if those local tools query them
+- remotes Flatpak ya configurados en el dispositivo
+- endpoints del updater de SteamOS, si las herramientas locales los consultan
 
-Nothing is uploaded. There is no DeckDoctor backend.
+Nada se sube. No hay backend de DeckDoctor.
+
+---
 
 ## Privacy / Privacidad
 
-Reports try to redact username, `/home/<user>`, hostname, emails, private IPs, MACs, Steam IDs, tokens, JWTs, and SSH keys. This is **best-effort**. Read the file before you post it.
+El informe intenta redactar usuario, `/home/<user>`, hostname, emails, IPs privadas, MACs, Steam IDs, tokens, JWTs y claves SSH. Es **best-effort**: léelo antes de pegarlo en Discord o GitHub.
 
-## Documentation
+DeckDoctor **no** es:
 
-- [docs/research.md](docs/research.md) — ecosystem research (2026)
-- [docs/design.md](docs/design.md) — architecture
-- [docs/checks.md](docs/checks.md) — every check considered
-- [docs/roadmap.md](docs/roadmap.md) — 0.1 and later
+- un plugin de Decky
+- un diagnóstico de hardware (eso es [DeckDoc](https://github.com/deucebucket/deckdoc))
+- un troubleshooter de Proton / juegos
+- telemetría
+- permiso para `chmod 777`, matar procesos o reiniciar por ti
+
+---
+
+## Docs
+
+- [docs/research.md](docs/research.md) — ecosistema (2026)
+- [docs/design.md](docs/design.md) — arquitectura
+- [docs/checks.md](docs/checks.md) — cada check considerado
+- [docs/roadmap.md](docs/roadmap.md) — 0.1 y lo que sigue
+
+Issues: [github.com/antoniomml/deckdoctor/issues](https://github.com/antoniomml/deckdoctor/issues)
+
+---
 
 ## License
 
-MIT. See [LICENSE](LICENSE).
+MIT. Ver [LICENSE](LICENSE).

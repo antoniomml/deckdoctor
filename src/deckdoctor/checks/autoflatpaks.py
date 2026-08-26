@@ -31,14 +31,15 @@ def _find_plugin(ctx: DiagnosticContext) -> dict[str, Any] | None:
 
 def run(ctx: DiagnosticContext) -> CheckResult:
     plugin = _find_plugin(ctx)
+    title = ctx.tr(f"title.{ID}")
     if not plugin:
         ctx.facts.autoflatpaks_installed = False
         return result(
             ID,
-            TITLE,
+            title,
             Status.SKIPPED,
-            "AutoFlatpaks is not installed",
-            explanation="Optional plugin. No extra Flatpak package-list check was added.",
+            ctx.tr("auto.missing"),
+            explanation=ctx.tr("auto.missing.explain"),
             source=EvidenceSource.FLATPAK,
         )
 
@@ -53,9 +54,9 @@ def run(ctx: DiagnosticContext) -> CheckResult:
     if ctx.facts.flatpak_available is False:
         return result(
             ID,
-            TITLE,
+            title,
             Status.FAIL,
-            "AutoFlatpaks is installed but the Flatpak CLI is not working",
+            ctx.tr("auto.no_flatpak"),
             evidence=evidence,
             source=EvidenceSource.FLATPAK,
         )
@@ -68,10 +69,10 @@ def run(ctx: DiagnosticContext) -> CheckResult:
     if not ctx.network_enabled:
         return result(
             ID,
-            TITLE,
+            title,
             Status.INFO,
-            "AutoFlatpaks is installed; remote listing skipped (--no-network)",
-            explanation="Local plugin files were inspected. Flatpak remote-ls was not run.",
+            ctx.tr("auto.no_network"),
+            explanation=ctx.tr("auto.no_network.explain"),
             evidence=evidence,
             source=EvidenceSource.FLATPAK,
         )
@@ -85,11 +86,11 @@ def run(ctx: DiagnosticContext) -> CheckResult:
         ctx.facts.autoflatpaks_remote_list_failed = True
         return result(
             ID,
-            TITLE,
+            title,
             Status.FAIL,
-            "AutoFlatpaks cannot generate a remote package list (flatpak remote-ls timed out)",
-            explanation="The plugin itself appears installed; Flatpak did not return a remote list in time.",
-            recommendation="Check network and remotes. DeckDoctor will not delete remotes.",
+            ctx.tr("auto.timeout"),
+            explanation=ctx.tr("auto.timeout.explain"),
+            recommendation=ctx.tr("auto.timeout.rec"),
             evidence=evidence,
             source=EvidenceSource.FLATPAK,
         )
@@ -107,19 +108,11 @@ def run(ctx: DiagnosticContext) -> CheckResult:
         ctx.facts.autoflatpaks_remote_list_failed = True
         return result(
             ID,
-            TITLE,
+            title,
             Status.FAIL,
-            "AutoFlatpaks cannot generate its remote package list",
-            explanation=(
-                "AutoFlatpaks is installed. Current versions call `flatpak remote-ls` (not `flatpak update`) "
-                "to build the remote package list. Flatpak reported an error, so the plugin cannot show available packages. "
-                + (f"Stderr mentions {remote_hint}. " if remote_hint else "")
-                + "A stale remote (historically kdeapps / distribute.kde.org NX) is a known cause."
-            ),
-            recommendation=(
-                "Inspect `flatpak remotes`. If a remote you do not need is failing, you can remove it yourself "
-                "(`flatpak remote-delete NAME`). Custom remotes are not automatically wrong. DeckDoctor will not delete them."
-            ),
+            ctx.tr("auto.remote_fail"),
+            explanation=ctx.tr("auto.remote_fail.explain"),
+            recommendation=ctx.tr("auto.remote_fail.rec"),
             evidence=evidence,
             source=EvidenceSource.FLATPAK,
             extra={"remote_hint": remote_hint, "log_fail": log_fail},
@@ -128,22 +121,20 @@ def run(ctx: DiagnosticContext) -> CheckResult:
     if log_fail:
         return result(
             ID,
-            TITLE,
+            title,
             Status.WARNING,
-            "AutoFlatpaks logs look unhappy even though remote-ls succeeded now",
-            explanation="The plugin may have failed earlier. Current Flatpak listing works.",
+            ctx.tr("auto.logs"),
+            explanation=ctx.tr("auto.logs.explain"),
             evidence=evidence,
             source=EvidenceSource.FLATPAK,
         )
 
     return result(
         ID,
-        TITLE,
+        title,
         Status.PASS,
-        "AutoFlatpaks installed; Flatpak remote listing succeeded",
-        explanation=(
-            "This does not execute AutoFlatpaks' regex parser; it checks the same Flatpak operation the plugin needs."
-        ),
+        ctx.tr("auto.ok"),
+        explanation=ctx.tr("auto.ok.explain"),
         evidence=evidence,
         source=EvidenceSource.FLATPAK,
     )

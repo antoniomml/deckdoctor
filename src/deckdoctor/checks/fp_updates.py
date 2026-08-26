@@ -9,12 +9,13 @@ TITLE = "Flatpak updates"
 
 
 def run(ctx: DiagnosticContext) -> CheckResult:
+    title = ctx.tr(f"title.{ID}")
     if ctx.facts.flatpak_available is False:
         return result(
             ID,
-            TITLE,
+            title,
             Status.SKIPPED,
-            "flatpak is not available",
+            ctx.tr("skip.flatpak_missing"),
             source=EvidenceSource.FLATPAK,
         )
 
@@ -24,15 +25,15 @@ def run(ctx: DiagnosticContext) -> CheckResult:
         ctx.facts.flatpak_update_check = "timeout"
         return result(
             ID,
-            TITLE,
+            title,
             Status.FAIL,
-            "Flatpak update check timed out",
-            explanation="A failed or timed-out check is not the same as zero updates.",
+            ctx.tr("fp.upd.timeout"),
+            explanation=ctx.tr("fp.upd.timeout.explain"),
             evidence=[listing.stderr.strip()[:400]],
             source=EvidenceSource.FLATPAK,
         )
     if listing.error == "not_found":
-        return result(ID, TITLE, Status.SKIPPED, "flatpak is not available", source=EvidenceSource.FLATPAK)
+        return result(ID, title, Status.SKIPPED, ctx.tr("skip.flatpak_missing"), source=EvidenceSource.FLATPAK)
 
     stderr = listing.stderr.strip()
     if stderr:
@@ -45,18 +46,11 @@ def run(ctx: DiagnosticContext) -> CheckResult:
         ctx.facts.flatpak_update_check = "failed"
         return result(
             ID,
-            TITLE,
+            title,
             Status.FAIL,
-            "Flatpak could not check for updates",
-            explanation=(
-                "The remote query exited unsuccessfully or reported an error. "
-                "DeckDoctor will not report this as '0 updates'."
-            ),
-            recommendation=(
-                "Inspect remotes (`flatpak remotes`) and stderr below. "
-                "Stale remotes (refs that no longer exist) are a common cause. "
-                "Do not run `flatpak update` from DeckDoctor."
-            ),
+            ctx.tr("fp.upd.fail"),
+            explanation=ctx.tr("fp.upd.fail.explain"),
+            recommendation=ctx.tr("fp.upd.fail.rec"),
             evidence=evidence + ([listing.stdout.strip()[:400]] if listing.stdout.strip() else []),
             source=EvidenceSource.FLATPAK,
             extra={"stderr": stderr[:1000]},
@@ -71,10 +65,10 @@ def run(ctx: DiagnosticContext) -> CheckResult:
         ctx.facts.flatpak_update_check = "timeout"
         return result(
             ID,
-            TITLE,
+            title,
             Status.FAIL,
-            "Flatpak update check timed out",
-            explanation="A failed or timed-out check is not the same as zero updates.",
+            ctx.tr("fp.upd.timeout"),
+            explanation=ctx.tr("fp.upd.timeout.explain"),
             evidence=evidence + [proc.stderr.strip()[:400]],
             source=EvidenceSource.FLATPAK,
         )
@@ -89,18 +83,11 @@ def run(ctx: DiagnosticContext) -> CheckResult:
         ctx.facts.flatpak_update_check = "failed"
         return result(
             ID,
-            TITLE,
+            title,
             Status.FAIL,
-            "Flatpak could not check for updates",
-            explanation=(
-                "The remote query exited unsuccessfully or reported an error. "
-                "DeckDoctor will not report this as '0 updates'."
-            ),
-            recommendation=(
-                "Inspect remotes (`flatpak remotes`) and stderr below. "
-                "Stale remotes (refs that no longer exist) are a common cause. "
-                "Do not run `flatpak update` from DeckDoctor."
-            ),
+            ctx.tr("fp.upd.fail"),
+            explanation=ctx.tr("fp.upd.fail.explain"),
+            recommendation=ctx.tr("fp.upd.fail.rec"),
             evidence=evidence + ([proc.stdout.strip()[:400]] if proc.stdout.strip() else []),
             source=EvidenceSource.FLATPAK,
             extra={"stderr": upd_err[:1000]},
@@ -113,24 +100,21 @@ def run(ctx: DiagnosticContext) -> CheckResult:
     if not rows:
         return result(
             ID,
-            TITLE,
+            title,
             Status.PASS,
-            "No Flatpak updates reported",
-            explanation="remote-ls --updates succeeded with an empty list.",
+            ctx.tr("fp.upd.none"),
+            explanation=ctx.tr("fp.upd.none.explain"),
             evidence=evidence,
             source=EvidenceSource.FLATPAK,
             extra={"count": 0},
         )
     return result(
         ID,
-        TITLE,
+        title,
         Status.WARNING,
-        f"{len(rows)} Flatpak update(s) available",
-        explanation="Listed only. DeckDoctor did not apply updates.",
-        recommendation=(
-            "Update from Discover/AutoFlatpaks/Desktop when convenient: "
-            "`flatpak update` is a user action, not a DeckDoctor action."
-        ),
+        ctx.tr("fp.upd.some", count=len(rows)),
+        explanation=ctx.tr("fp.upd.some.explain"),
+        recommendation=ctx.tr("fp.upd.some.rec"),
         evidence=evidence + rows[:20],
         source=EvidenceSource.FLATPAK,
         extra={"count": len(rows)},

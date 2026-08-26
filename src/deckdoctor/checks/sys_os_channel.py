@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from deckdoctor.checks._util import first_line, result
+from deckdoctor.checks._util import first_line, result, skip_not_steamos
 from deckdoctor.context import DiagnosticContext
 from deckdoctor.models import CheckResult, EvidenceSource, Status
 
@@ -9,15 +9,10 @@ TITLE = "SteamOS channel"
 
 
 def run(ctx: DiagnosticContext) -> CheckResult:
-    if ctx.facts.is_steamos is False:
-        return result(
-            ID,
-            TITLE,
-            Status.SKIPPED,
-            "Not SteamOS",
-            explanation="Channel detection uses SteamOS tools.",
-            source=EvidenceSource.OS_METADATA,
-        )
+    title = ctx.tr(f"title.{ID}")
+    skipped = skip_not_steamos(ctx, ID, title)
+    if skipped:
+        return skipped
 
     for argv in (["steamos-select-branch", "-c"], ["steamos-select-branch"]):
         proc = ctx.run(argv)
@@ -26,9 +21,9 @@ def run(ctx: DiagnosticContext) -> CheckResult:
         if proc.timed_out:
             return result(
                 ID,
-                TITLE,
+                title,
                 Status.UNKNOWN,
-                "steamos-select-branch timed out",
+                ctx.tr("sys.channel.timeout"),
                 evidence=[proc.stderr.strip()],
                 source=EvidenceSource.OS_METADATA,
             )
@@ -38,10 +33,10 @@ def run(ctx: DiagnosticContext) -> CheckResult:
             ctx.facts.os_channel = channel
             return result(
                 ID,
-                TITLE,
+                title,
                 Status.PASS,
-                f"Channel: {channel}",
-                explanation="Reported by steamos-select-branch (local).",
+                ctx.tr("sys.channel.ok", channel=channel),
+                explanation=ctx.tr("sys.channel.ok.explain"),
                 evidence=[f"{' '.join(argv)} → {channel}"],
                 source=EvidenceSource.OS_METADATA,
                 extra={"channel": channel},
@@ -49,18 +44,18 @@ def run(ctx: DiagnosticContext) -> CheckResult:
         if text:
             return result(
                 ID,
-                TITLE,
+                title,
                 Status.UNKNOWN,
-                "Could not parse SteamOS channel",
+                ctx.tr("sys.channel.parse"),
                 evidence=[f"exit {proc.exit_code}: {first_line(text)}"],
                 source=EvidenceSource.OS_METADATA,
             )
 
     return result(
         ID,
-        TITLE,
+        title,
         Status.SKIPPED,
-        "steamos-select-branch not available",
-        explanation="The SteamOS branch tool is not on PATH. This is expected on non-SteamOS images.",
+        ctx.tr("sys.channel.missing"),
+        explanation=ctx.tr("sys.channel.missing.explain"),
         source=EvidenceSource.OS_METADATA,
     )

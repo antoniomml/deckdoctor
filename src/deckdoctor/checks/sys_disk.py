@@ -28,8 +28,7 @@ def _device_id(path: Path) -> int | None:
 
 
 def run(ctx: DiagnosticContext) -> CheckResult:
-    # SteamOS root (`/`) is often nearly full by design. Only /home (user home)
-    # and /var matter for Decky, Flatpak, and updater writes.
+    title = ctx.tr(f"title.{ID}")
     mounts: list[tuple[str, int, int, int]] = []
     seen_dev: set[int] = set()
     for path in (ctx.home, Path("/var")):
@@ -46,9 +45,9 @@ def run(ctx: DiagnosticContext) -> CheckResult:
     if not mounts:
         return result(
             ID,
-            TITLE,
+            title,
             Status.UNKNOWN,
-            "Could not measure disk space",
+            ctx.tr("sys.disk.unknown"),
             source=EvidenceSource.FILESYSTEM,
         )
 
@@ -58,18 +57,16 @@ def run(ctx: DiagnosticContext) -> CheckResult:
     min_free = min(m[3] for m in mounts)
     min_path = min(mounts, key=lambda m: m[3])[0]
     ctx.facts.disk_min_free = min_free
+    free_s = _fmt(min_free)
 
     if min_free < CRITICAL_FREE:
         return result(
             ID,
-            TITLE,
+            title,
             Status.FAIL,
-            f"Only {_fmt(min_free)} free on {min_path}",
-            explanation=(
-                "Very little free space remains. Decky/plugin installs, Flatpak fetches, "
-                "and SteamOS updates may fail. This is correlation, not proof of a specific crash."
-            ),
-            recommendation="Free space on /home and /var (games, Flatpak, Steam downloads) and re-run DeckDoctor.",
+            ctx.tr("sys.disk.critical", free=free_s, path=min_path),
+            explanation=ctx.tr("sys.disk.critical.explain"),
+            recommendation=ctx.tr("sys.disk.critical.rec"),
             evidence=evidence,
             source=EvidenceSource.FILESYSTEM,
             severity=Severity.HIGH,
@@ -77,20 +74,20 @@ def run(ctx: DiagnosticContext) -> CheckResult:
     if min_free < WARN_FREE:
         return result(
             ID,
-            TITLE,
+            title,
             Status.WARNING,
-            f"{_fmt(min_free)} free on {min_path}",
-            explanation="Less than 2 GB free can make Flatpak and OS updates unreliable.",
-            recommendation="Free some space before large updates.",
+            ctx.tr("sys.disk.warn", free=free_s, path=min_path),
+            explanation=ctx.tr("sys.disk.warn.explain"),
+            recommendation=ctx.tr("sys.disk.warn.rec"),
             evidence=evidence,
             source=EvidenceSource.FILESYSTEM,
             severity=Severity.MEDIUM,
         )
     return result(
         ID,
-        TITLE,
+        title,
         Status.PASS,
-        f"{_fmt(min_free)} free (lowest mount: {min_path})",
+        ctx.tr("sys.disk.ok", free=free_s, path=min_path),
         evidence=evidence,
         source=EvidenceSource.FILESYSTEM,
     )

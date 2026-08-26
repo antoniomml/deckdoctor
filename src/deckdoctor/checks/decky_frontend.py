@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 
-from deckdoctor.checks._util import result
+from deckdoctor.checks._util import result, skip_no_decky
 from deckdoctor.context import DiagnosticContext
 from deckdoctor.models import CheckResult, EvidenceSource, Severity, Status
 
@@ -50,6 +50,7 @@ def _cef_excerpt(body: str, *, limit: int = 8, width: int = 160) -> list[str]:
 
 
 def run(ctx: DiagnosticContext) -> CheckResult:
+    title = ctx.tr(f"title.{ID}")
     steam = ctx.steam_root
     cef_file = steam / ".cef-enable-remote-debugging"
     flatpak_cef = (
@@ -63,27 +64,19 @@ def run(ctx: DiagnosticContext) -> CheckResult:
     if ctx.exists(flatpak_cef):
         evidence.append(f"flatpak steam cef file present: {flatpak_cef}")
 
-    if ctx.facts.decky_installed is False:
-        return result(
-            ID,
-            TITLE,
-            Status.SKIPPED,
-            "Decky is not installed",
-            evidence=evidence,
-            source=EvidenceSource.LOCALHOST,
-        )
+    skipped = skip_no_decky(ctx, ID, title, source=EvidenceSource.LOCALHOST)
+    if skipped:
+        skipped.evidence = evidence
+        return skipped
 
     if not cef_enabled:
         return result(
             ID,
-            TITLE,
+            title,
             Status.FAIL,
-            "CEF remote debugging is not enabled",
-            explanation=(
-                "Decky injects into Steam through the CEF debugger. "
-                "The installer normally creates ~/.steam/steam/.cef-enable-remote-debugging."
-            ),
-            recommendation="Re-run the official Decky installer, which touches that file. Do not expose CEF to the LAN unless you understand the risk.",
+            ctx.tr("decky.front.no_cef"),
+            explanation=ctx.tr("decky.front.no_cef.explain"),
+            recommendation=ctx.tr("decky.front.no_cef.rec"),
             evidence=evidence,
             source=EvidenceSource.FILESYSTEM,
             severity=Severity.HIGH,
@@ -104,14 +97,11 @@ def run(ctx: DiagnosticContext) -> CheckResult:
         ctx.facts.cef_json_ok = False
         return result(
             ID,
-            TITLE,
+            title,
             Status.FAIL,
-            "Port 8080 answered but is not Steam's CEF debugger",
-            explanation=(
-                "Decky expected Chrome DevTools JSON at http://127.0.0.1:8080/json. "
-                "A 404 usually means another program (often Syncthing) owns 8080."
-            ),
-            recommendation="Move the conflicting app off port 8080. Syncthing's recommended port is 8384.",
+            ctx.tr("decky.front.not_cef"),
+            explanation=ctx.tr("decky.front.not_cef.explain"),
+            recommendation=ctx.tr("decky.front.not_cef.rec"),
             evidence=evidence,
             source=EvidenceSource.LOCALHOST,
             severity=Severity.HIGH,
@@ -121,11 +111,11 @@ def run(ctx: DiagnosticContext) -> CheckResult:
     if conflict:
         return result(
             ID,
-            TITLE,
+            title,
             Status.FAIL,
-            "Steam CEF port 8080 is in conflict",
-            explanation="A non-Steam process is listening on 8080, so Decky cannot inject into Game Mode.",
-            recommendation="Change the conflicting application's port. DeckDoctor will not kill it.",
+            ctx.tr("decky.front.conflict"),
+            explanation=ctx.tr("decky.front.conflict.explain"),
+            recommendation=ctx.tr("decky.front.conflict.rec"),
             evidence=evidence,
             source=EvidenceSource.LOCALHOST,
             severity=Severity.HIGH,
@@ -135,14 +125,11 @@ def run(ctx: DiagnosticContext) -> CheckResult:
         ctx.facts.cef_json_ok = False
         return result(
             ID,
-            TITLE,
+            title,
             Status.WARNING,
-            "Could not reach Steam CEF debugger on localhost:8080",
-            explanation=(
-                "This is expected in Desktop Mode if Game Mode Steam is not running. "
-                "If you are in Gaming Mode and Decky is missing from the QAM, CEF may be down or blocked."
-            ),
-            recommendation="Re-test from Gaming Mode. Confirm .cef-enable-remote-debugging still exists after Steam updates.",
+            ctx.tr("decky.front.unreachable"),
+            explanation=ctx.tr("decky.front.unreachable.explain"),
+            recommendation=ctx.tr("decky.front.unreachable.rec"),
             evidence=evidence,
             source=EvidenceSource.LOCALHOST,
             extra={"cef_json": False},
@@ -156,15 +143,11 @@ def run(ctx: DiagnosticContext) -> CheckResult:
     if looks and backend_ok and steam_beta:
         return result(
             ID,
-            TITLE,
+            title,
             Status.WARNING,
-            "Backend looks healthy and CEF is Steam; Steam client is on Beta",
-            explanation=(
-                "FACT: PluginLoader is present, the service is active, and :8080/json looks like Steam CEF. "
-                "LIKELY CAUSE (medium): a Steam client Beta/UI change can hide Decky from the QAM even when the backend is fine. "
-                "DeckDoctor cannot see the QAM itself from here."
-            ),
-            recommendation="Try Steam Deck Stable as a contrast, update Decky (stable or prerelease), and disable plugins one by one if React errors persist.",
+            ctx.tr("decky.front.beta"),
+            explanation=ctx.tr("decky.front.beta.explain"),
+            recommendation=ctx.tr("decky.front.beta.rec"),
             evidence=evidence,
             source=EvidenceSource.LOCALHOST,
             severity=Severity.MEDIUM,
@@ -174,10 +157,10 @@ def run(ctx: DiagnosticContext) -> CheckResult:
     if looks:
         return result(
             ID,
-            TITLE,
+            title,
             Status.PASS,
-            "CEF debugger looks like Steam",
-            explanation="localhost:8080/json returned DevTools targets. This does not prove the QAM tab is visible.",
+            ctx.tr("decky.front.ok"),
+            explanation=ctx.tr("decky.front.ok.explain"),
             evidence=evidence,
             source=EvidenceSource.LOCALHOST,
             extra={"cef_json": True},
@@ -185,9 +168,9 @@ def run(ctx: DiagnosticContext) -> CheckResult:
 
     return result(
         ID,
-        TITLE,
+        title,
         Status.UNKNOWN,
-        "CEF endpoint responded but was not recognized as Steam DevTools JSON",
+        ctx.tr("decky.front.unknown"),
         evidence=evidence,
         source=EvidenceSource.LOCALHOST,
         extra={"cef_json": False},

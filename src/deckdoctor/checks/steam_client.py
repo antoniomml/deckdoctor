@@ -9,8 +9,8 @@ from deckdoctor.models import CheckResult, EvidenceSource, Severity, Status
 ID = "STEAM-CLIENT"
 TITLE = "Steam client"
 
-_VERSION_RE = re.compile(r"version\s*\(?\s*(\d{9,12})", re.I)
-_BUILD_RE = re.compile(r"\bbuildid[=:]?\s*(\d{9,12})", re.I)
+_VERSION_RE = re.compile(r'version["\'\s:=(]*(\d{9,12})', re.I)
+_BUILD_RE = re.compile(r'\bbuildid["\'\s:=]*(\d{9,12})', re.I)
 
 
 def _scan_version(text: str) -> str | None:
@@ -24,13 +24,13 @@ def _looks_beta(text: str) -> bool | None:
         return True
     if '"betaname"' in lowered or "betakey" in lowered:
         return True
-    # Avoid treating random "beta" plugin names as the Steam client channel.
     if "clientbeta" in lowered or "wantbeta" in lowered:
         return True
     return None
 
 
 def run(ctx: DiagnosticContext) -> CheckResult:
+    title = ctx.tr(f"title.{ID}")
     steam = ctx.steam_root
     evidence: list[str] = [f"steam root candidate: {steam}"]
     version: str | None = None
@@ -62,12 +62,11 @@ def run(ctx: DiagnosticContext) -> CheckResult:
         beta = _looks_beta(cfg_text)
         if beta:
             channel = "beta"
-        elif 'UpdateChannel' in cfg_text or "SteamDeck" in cfg_text:
+        elif "UpdateChannel" in cfg_text or "SteamDeck" in cfg_text:
             if re.search(r'"UpdateChannel"\s+"0"', cfg_text):
                 channel = "stable"
         evidence.append(f"scanned {config}")
 
-    # Desktop Steam stores the beta name here when opted in.
     beta_file = steam / "package" / "beta"
     if ctx.exists(beta_file):
         channel = "beta"
@@ -79,31 +78,31 @@ def run(ctx: DiagnosticContext) -> CheckResult:
     if version is None and channel == "unknown" and not ctx.exists(steam):
         return result(
             ID,
-            TITLE,
+            title,
             Status.UNKNOWN,
-            "Steam client metadata not found",
-            explanation="No ~/.steam/steam or ~/.local/share/Steam tree was readable.",
+            ctx.tr("steam.missing"),
+            explanation=ctx.tr("steam.missing.explain"),
             evidence=evidence,
             source=EvidenceSource.STEAM_METADATA,
         )
 
-    finding_parts = []
+    parts: list[str] = []
     if version:
-        finding_parts.append(f"build {version}")
-    finding_parts.append(f"channel {channel}")
-    finding = ", ".join(finding_parts)
+        parts.append(f"build {version}")
+    if channel != "unknown":
+        parts.append(f"channel {channel}")
+    elif not version:
+        parts.append(f"channel {channel}")
+    finding = ", ".join(parts) if parts else f"channel {channel}"
 
     if channel == "beta":
         return result(
             ID,
-            TITLE,
+            title,
             Status.INFO,
             finding,
-            explanation=(
-                "Steam client Beta is a correlation factor for Decky QAM issues, "
-                "not proof that Beta is broken. DeckDoctor does not keep a build×Decky matrix."
-            ),
-            recommendation="If Decky vanished from the QAM after a client update, try Steam Deck Stable as a test, then update Decky.",
+            explanation=ctx.tr("steam.beta.explain"),
+            recommendation=ctx.tr("steam.beta.rec"),
             evidence=evidence,
             source=EvidenceSource.STEAM_METADATA,
             severity=Severity.LOW,
@@ -113,10 +112,10 @@ def run(ctx: DiagnosticContext) -> CheckResult:
     status = Status.PASS if version else Status.UNKNOWN
     return result(
         ID,
-        TITLE,
+        title,
         status,
         finding,
-        explanation="Parsed from local Steam files only.",
+        explanation=ctx.tr("steam.ok.explain"),
         evidence=evidence,
         source=EvidenceSource.STEAM_METADATA,
         extra={"version": version, "channel": channel},

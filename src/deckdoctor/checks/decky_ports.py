@@ -9,7 +9,6 @@ from deckdoctor.models import CheckResult, EvidenceSource, Severity, Status
 ID = "DECKY-PORTS"
 TITLE = "Decky ports"
 
-# Confirmed in decky-loader 2026 source.
 CEF_PORT = 8080
 DECKY_PORT = 1337
 CEF_EXPECTED = "steamwebhelper"
@@ -17,14 +16,10 @@ DECKY_EXPECTED = "PluginLoader"
 
 
 def _parse_ss(text: str) -> dict[int, list[str]]:
-    """Return port -> list of listener description lines."""
     found: dict[int, list[str]] = {}
     port_re = re.compile(r":(\d+)\s")
     users_re = re.compile(r'users:\(\("(.*?)"')
     for line in text.splitlines():
-        if "LISTEN" not in line.upper() and "Listen" not in line:
-            # ss -H -ltn still has local address:port
-            pass
         ports = port_re.findall(line)
         proc = None
         um = users_re.search(line)
@@ -39,23 +34,24 @@ def _parse_ss(text: str) -> dict[int, list[str]]:
 
 
 def run(ctx: DiagnosticContext) -> CheckResult:
+    title = ctx.tr(f"title.{ID}")
     proc = ctx.run(["ss", "-ltnp"])
     if proc.error == "not_found":
         proc = ctx.run(["ss", "-ltn"])
     if proc.error == "not_found":
         return result(
             ID,
-            TITLE,
+            title,
             Status.SKIPPED,
-            "ss is not available; cannot inspect sockets",
+            ctx.tr("decky.ports.no_ss"),
             source=EvidenceSource.SOCKETS,
         )
     if proc.timed_out:
         return result(
             ID,
-            TITLE,
+            title,
             Status.UNKNOWN,
-            "ss timed out",
+            ctx.tr("decky.ports.timeout"),
             source=EvidenceSource.SOCKETS,
         )
 
@@ -74,12 +70,8 @@ def run(ctx: DiagnosticContext) -> CheckResult:
     if owners_8080:
         joined = " ".join(owners_8080)
         if CEF_EXPECTED not in joined and "steam" not in joined.lower():
-            problems.append(
-                f"Port {CEF_PORT} is in use by {owners_8080[0]!r}, expected {CEF_EXPECTED} (Steam CEF debugger)."
-            )
-            recs.append(
-                "Change the other application's port (Syncthing should use 8384). Decky cannot move Steam's CEF port."
-            )
+            problems.append(ctx.tr("decky.ports.conflict8080", owner=repr(owners_8080[0])))
+            recs.append(ctx.tr("decky.ports.conflict8080.rec"))
             ctx.facts.port_8080_conflict = True
     else:
         ctx.facts.port_8080_listening = False
@@ -89,34 +81,37 @@ def run(ctx: DiagnosticContext) -> CheckResult:
     if owners_1337:
         joined = " ".join(owners_1337)
         if DECKY_EXPECTED.lower() not in joined.lower() and "pluginloader" not in joined.lower() and "python" not in joined.lower():
-            problems.append(f"Port {DECKY_PORT} is in use by {owners_1337[0]!r}, expected {DECKY_EXPECTED}.")
-            recs.append("Stop or reconfigure the process using 1337. DeckDoctor will not kill it.")
+            problems.append(ctx.tr("decky.ports.conflict1337", owner=repr(owners_1337[0])))
+            recs.append(ctx.tr("decky.ports.conflict1337.rec"))
             ctx.facts.port_1337_conflict = True
     elif ctx.facts.decky_service_active == "active":
-        problems.append("Decky service is active but port 1337 is not listening.")
+        problems.append(ctx.tr("decky.ports.missing1337"))
         ctx.facts.port_1337_missing = True
 
     if problems:
         return result(
             ID,
-            TITLE,
+            title,
             Status.FAIL,
             problems[0],
             explanation=" ".join(problems),
-            recommendation=" ".join(recs) or "Inspect listeners; do not kill processes from DeckDoctor.",
+            recommendation=" ".join(recs) or ctx.tr("decky.ports.fail.rec"),
             evidence=evidence + [proc.stdout.strip()[:500]],
             source=EvidenceSource.SOCKETS,
             severity=Severity.HIGH,
         )
 
-    finding = f"{CEF_PORT}: {', '.join(owners_8080) if owners_8080 else 'not listening'}; {DECKY_PORT}: {', '.join(owners_1337) if owners_1337 else 'not listening'}"
+    finding = (
+        f"{CEF_PORT}: {', '.join(owners_8080) if owners_8080 else 'not listening'}; "
+        f"{DECKY_PORT}: {', '.join(owners_1337) if owners_1337 else 'not listening'}"
+    )
     status = Status.PASS if owners_1337 or ctx.facts.decky_installed is False else Status.INFO
     return result(
         ID,
-        TITLE,
+        title,
         status if owners_8080 or owners_1337 else Status.INFO,
         finding,
-        explanation="8080 belongs to Steam CEF; 1337 belongs to Decky. No process was changed.",
+        explanation=ctx.tr("decky.ports.ok.explain"),
         evidence=evidence,
         source=EvidenceSource.SOCKETS,
     )

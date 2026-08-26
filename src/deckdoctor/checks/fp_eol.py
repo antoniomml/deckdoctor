@@ -28,12 +28,13 @@ def _ref_key(ref: str) -> str:
 
 
 def run(ctx: DiagnosticContext) -> CheckResult:
+    title = ctx.tr(f"title.{ID}")
     if ctx.facts.flatpak_available is False:
         return result(
             ID,
-            TITLE,
+            title,
             Status.SKIPPED,
-            "flatpak is not available",
+            ctx.tr("skip.flatpak_missing"),
             source=EvidenceSource.FLATPAK,
         )
 
@@ -50,23 +51,23 @@ def run(ctx: DiagnosticContext) -> CheckResult:
         f"list --app exit {apps.exit_code}",
     ]
     if runtimes.error == "not_found":
-        return result(ID, TITLE, Status.SKIPPED, "flatpak is not available", source=EvidenceSource.FLATPAK)
+        return result(ID, title, Status.SKIPPED, ctx.tr("skip.flatpak_missing"), source=EvidenceSource.FLATPAK)
     if runtimes.timed_out or apps.timed_out:
         return result(
             ID,
-            TITLE,
+            title,
             Status.UNKNOWN,
-            "flatpak list timed out while probing EOL metadata",
+            ctx.tr("fp.eol.timeout"),
             evidence=evidence,
             source=EvidenceSource.FLATPAK,
         )
     if not runtimes.ok:
         return result(
             ID,
-            TITLE,
+            title,
             Status.UNKNOWN,
-            "Could not list installed Flatpak runtimes",
-            explanation="EOL is read from `flatpak info --show-metadata`, not from a list column that may not exist.",
+            ctx.tr("fp.eol.list_fail"),
+            explanation=ctx.tr("fp.eol.list_fail.explain"),
             evidence=evidence + [runtimes.stderr.strip()[:400]],
             source=EvidenceSource.FLATPAK,
         )
@@ -77,9 +78,9 @@ def run(ctx: DiagnosticContext) -> CheckResult:
         ctx.facts.flatpak_eol = []
         return result(
             ID,
-            TITLE,
+            title,
             Status.PASS,
-            "No installed Flatpak refs to inspect for EOL",
+            ctx.tr("fp.eol.empty"),
             evidence=evidence,
             source=EvidenceSource.FLATPAK,
             extra={"count": 0},
@@ -116,26 +117,23 @@ def run(ctx: DiagnosticContext) -> CheckResult:
     if not eol_runtimes:
         return result(
             ID,
-            TITLE,
+            title,
             Status.PASS,
-            "No EndOfLife marker on inspected Flatpak runtimes",
-            explanation="Read the EndOfLife key from each runtime's metadata. Missing key means not marked EOL.",
+            ctx.tr("fp.eol.clean"),
+            explanation=ctx.tr("fp.eol.clean.explain"),
             evidence=evidence,
             source=EvidenceSource.FLATPAK,
             extra={"count": 0},
         )
 
-    app_bit = f"; {len(eol_apps)} app(s) use them" if eol_apps else ""
+    app_bit = ctx.tr("fp.eol.apps", count=len(eol_apps)) if eol_apps else ""
     return result(
         ID,
-        TITLE,
+        title,
         Status.WARNING,
-        f"{len(eol_runtimes)} Flatpak runtime(s) marked end-of-life{app_bit}",
-        explanation=(
-            "Flatpak still runs EOL runtimes, but they no longer receive security updates. "
-            "DeckDoctor did not uninstall anything."
-        ),
-        recommendation="Update or replace the listed apps from Discover/Flathub when you can. Do not `flatpak uninstall` from DeckDoctor.",
+        ctx.tr("fp.eol.some", count=len(eol_runtimes), apps=app_bit),
+        explanation=ctx.tr("fp.eol.some.explain"),
+        recommendation=ctx.tr("fp.eol.some.rec"),
         evidence=evidence[:40],
         source=EvidenceSource.FLATPAK,
         severity=Severity.LOW,

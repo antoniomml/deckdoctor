@@ -27,6 +27,20 @@ _SSH_BLOCK = re.compile(
     re.S,
 )
 _MIN_TOKEN_LEN = 3
+# Default device names that also appear in OS metadata (PRETTY_NAME, VARIANT_ID).
+_GENERIC_HOSTNAMES = frozenset(
+    {
+        "steamdeck",
+        "steamos",
+        "localhost",
+        "linux",
+        "bazzite",
+        "chimeraos",
+        "holoiso",
+        "nobara",
+        "deck",
+    }
+)
 
 
 def _is_private_ipv4(ip: str) -> bool:
@@ -90,9 +104,10 @@ class Sanitizer:
             out = out.replace(self.home, "/home/<USER>")
         if self.user and len(self.user) >= _MIN_TOKEN_LEN:
             out = re.sub(rf"(?<![A-Za-z0-9_]){re.escape(self.user)}(?![A-Za-z0-9_])", "<USER>", out)
-        if self.hostname and len(self.hostname) >= _MIN_TOKEN_LEN:
+        host = (self.hostname or "").strip()
+        if host and len(host) >= _MIN_TOKEN_LEN and host.lower() not in _GENERIC_HOSTNAMES:
             out = re.sub(
-                rf"(?<![A-Za-z0-9_]){re.escape(self.hostname)}(?![A-Za-z0-9_])",
+                rf"(?<![A-Za-z0-9_]){re.escape(host)}(?![A-Za-z0-9_])",
                 "<HOSTNAME>",
                 out,
                 flags=re.I,

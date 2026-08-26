@@ -82,4 +82,6 @@ def diagnose(ctx: DiagnosticContext) -> Report:
         locale=ctx.locale,
         ascii_mode=ctx.ascii_mode,
         partial=ctx.facts.partial,
+        verbose=ctx.verbose,
+        color=ctx.color,
     )

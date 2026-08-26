@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "deckdoctor"
-version = "0.2.1"
-description = "Read-only diagnostic CLI for SteamOS, Decky Loader, plugins, and Flatpak"
+version = "0.3.0"
+description = "Diagnostics and opt-in fixes for SteamOS, Decky Loader, plugins, and Flatpak"
 readme = "README.md"
 license = { text = "MIT" }
 requires-python = ">=3.11"

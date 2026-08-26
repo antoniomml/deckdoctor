@@ -17,6 +17,7 @@ TITLE = "OS version"
 
 
 def run(ctx: DiagnosticContext) -> CheckResult:
+    title = ctx.tr(f"title.{ID}")
     osr = ctx.load_os_release()
     manifest = ctx.load_atomupd_manifest()
     name = osr.get("PRETTY_NAME") or osr.get("NAME") or "unknown"
@@ -37,12 +38,14 @@ def run(ctx: DiagnosticContext) -> CheckResult:
         evidence.append(f"atomupd manifest: version={manifest.get('version')} buildid={manifest.get('buildid')}")
 
     if not osr and not manifest:
+        ctx.facts.is_steamos = False
+        ctx.facts.os_family = "unknown"
         return result(
             ID,
-            TITLE,
+            title,
             Status.UNKNOWN,
-            "Could not read OS version metadata",
-            explanation="Neither /etc/os-release nor an atomupd manifest was readable.",
+            ctx.tr("sys.os.unknown"),
+            explanation=ctx.tr("sys.os.unknown.explain"),
             source=EvidenceSource.OS_METADATA,
             extra={"steamos": False},
         )
@@ -54,29 +57,24 @@ def run(ctx: DiagnosticContext) -> CheckResult:
     ctx.facts.is_steamos = is_steamos
     ctx.facts.os_family = family
     distro_label = KNOWN_DISTROS.get(family, name)
-    finding = f"{name} {version} (build {build}, variant {variant})"
+    finding = ctx.tr("sys.os.finding", name=name, version=version, build=build, variant=variant)
     if not is_steamos:
         return result(
             ID,
-            TITLE,
+            title,
             Status.INFO,
             finding,
-            explanation=(
-                f"This looks like {distro_label}, not SteamOS. "
-                "SteamOS updater, channel, overlay, and pending-reboot checks will be skipped. "
-                "Decky, plugin, and Flatpak checks still run when those stacks are present. "
-                "Hardware and other-handheld quirks are out of scope."
-            ),
+            explanation=ctx.tr("sys.os.not_steamos.explain", distro=distro_label),
             evidence=evidence,
             source=EvidenceSource.OS_METADATA,
             extra={"steamos": False, "os_family": family},
         )
     return result(
         ID,
-        TITLE,
+        title,
         Status.PASS,
         finding,
-        explanation="Version is taken from local OS metadata, not from the internet.",
+        explanation=ctx.tr("sys.os.steamos.explain"),
         evidence=evidence,
         source=EvidenceSource.OS_METADATA,
         extra={"steamos": True, "version": version, "build": build, "os_family": "steamos"},

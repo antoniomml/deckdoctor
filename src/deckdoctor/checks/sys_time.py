@@ -20,6 +20,7 @@ def _parse_show(text: str) -> dict[str, str]:
 
 
 def run(ctx: DiagnosticContext) -> CheckResult:
+    title = ctx.tr(f"title.{ID}")
     now = ctx.now
     if now.tzinfo is None:
         now = now.replace(tzinfo=UTC)
@@ -29,11 +30,11 @@ def run(ctx: DiagnosticContext) -> CheckResult:
     if year < 2024:
         return result(
             ID,
-            TITLE,
+            title,
             Status.FAIL,
-            f"System clock year is {year}",
-            explanation="A clock this far in the past commonly breaks TLS and update checks.",
-            recommendation="Connect to the internet and wait for NTP, or set the time in Desktop Mode. Do not disable TLS verification.",
+            ctx.tr("sys.time.past", year=year),
+            explanation=ctx.tr("sys.time.past.explain"),
+            recommendation=ctx.tr("sys.time.past.rec"),
             evidence=evidence,
             source=EvidenceSource.OS_METADATA,
             severity=Severity.HIGH,
@@ -43,18 +44,18 @@ def run(ctx: DiagnosticContext) -> CheckResult:
     if proc.error == "not_found":
         return result(
             ID,
-            TITLE,
+            title,
             Status.PASS,
-            f"Clock year {year} looks sane (timedatectl not available)",
+            ctx.tr("sys.time.no_timedatectl", year=year),
             evidence=evidence,
             source=EvidenceSource.OS_METADATA,
         )
     if proc.timed_out or not proc.ok:
         return result(
             ID,
-            TITLE,
+            title,
             Status.UNKNOWN,
-            "Could not read timedatectl",
+            ctx.tr("sys.time.unknown"),
             evidence=evidence + [proc.stderr.strip()[:300]],
             source=EvidenceSource.OS_METADATA,
         )
@@ -69,20 +70,20 @@ def run(ctx: DiagnosticContext) -> CheckResult:
     if synced.lower() == "no" and ntp_enabled.lower() == "yes":
         return result(
             ID,
-            TITLE,
+            title,
             Status.WARNING,
-            "NTP is enabled but the clock is not synchronized",
-            explanation="Unsynchronized time can cause TLS and GitHub/SteamOS update failures. This is not proof those failed.",
-            recommendation="Wait for time sync or check network connectivity.",
+            ctx.tr("sys.time.unsynced"),
+            explanation=ctx.tr("sys.time.unsynced.explain"),
+            recommendation=ctx.tr("sys.time.unsynced.rec"),
             evidence=evidence,
             source=EvidenceSource.OS_METADATA,
             severity=Severity.LOW,
         )
     return result(
         ID,
-        TITLE,
+        title,
         Status.PASS,
-        "System time looks reasonable",
+        ctx.tr("sys.time.ok"),
         evidence=evidence,
         source=EvidenceSource.OS_METADATA,
         extra={"NTPSynchronized": synced},

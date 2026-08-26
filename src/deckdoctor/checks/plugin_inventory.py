@@ -56,12 +56,13 @@ def collect_plugins(ctx: DiagnosticContext) -> list[dict[str, Any]]:
 
 
 def run(ctx: DiagnosticContext) -> CheckResult:
+    title = ctx.tr(f"title.{ID}")
     if ctx.facts.decky_installed is False:
         return result(
             ID,
-            TITLE,
+            title,
             Status.SKIPPED,
-            "Decky is not installed",
+            ctx.tr("skip.decky_missing"),
             source=EvidenceSource.DECKY_METADATA,
         )
 
@@ -71,9 +72,9 @@ def run(ctx: DiagnosticContext) -> CheckResult:
     if not ctx.exists(ctx.plugins_dir):
         return result(
             ID,
-            TITLE,
+            title,
             Status.INFO,
-            "No plugins directory yet",
+            ctx.tr("plugin.inv.no_dir"),
             evidence=[str(ctx.plugins_dir)],
             source=EvidenceSource.DECKY_METADATA,
             extra={"count": 0},
@@ -81,20 +82,20 @@ def run(ctx: DiagnosticContext) -> CheckResult:
     if not plugins:
         return result(
             ID,
-            TITLE,
+            title,
             Status.INFO,
-            "0 plugins detected",
-            explanation="Only ~/homebrew/plugins was scanned.",
+            ctx.tr("plugin.inv.zero"),
+            explanation=ctx.tr("plugin.inv.zero.explain"),
             evidence=[str(ctx.plugins_dir)],
             source=EvidenceSource.DECKY_METADATA,
             extra={"count": 0},
         )
     return result(
         ID,
-        TITLE,
+        title,
         Status.PASS,
-        f"{len(plugins)} plugin(s) detected",
-        explanation="Inventory from plugin.json / package.json only. Load success is covered by logs.",
+        ctx.tr("plugin.inv.ok", count=len(plugins)),
+        explanation=ctx.tr("plugin.inv.ok.explain"),
         evidence=names[:30],
         source=EvidenceSource.DECKY_METADATA,
         extra={"count": len(plugins), "plugins": names},

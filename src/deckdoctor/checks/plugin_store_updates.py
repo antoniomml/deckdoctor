@@ -46,28 +46,29 @@ def _unique_match(local: dict[str, Any], index: dict[str, list[dict[str, str]]])
 
 
 def run(ctx: DiagnosticContext) -> CheckResult:
+    title = ctx.tr(f"title.{ID}")
     if not ctx.network_enabled:
         return result(
             ID,
-            TITLE,
+            title,
             Status.SKIPPED,
-            "Network checks disabled",
+            ctx.tr("skip.no_network"),
             source=EvidenceSource.NETWORK,
         )
     if ctx.facts.decky_installed is False:
         return result(
             ID,
-            TITLE,
+            title,
             Status.SKIPPED,
-            "Decky is not installed",
+            ctx.tr("skip.decky_missing"),
             source=EvidenceSource.DECKY_METADATA,
         )
     if ctx.facts.store_ok is False:
         return result(
             ID,
-            TITLE,
+            title,
             Status.SKIPPED,
-            "Plugin Store was unreachable",
+            ctx.tr("plugin.store.unreachable"),
             source=EvidenceSource.NETWORK,
         )
 
@@ -76,18 +77,18 @@ def run(ctx: DiagnosticContext) -> CheckResult:
     if not plugins:
         return result(
             ID,
-            TITLE,
+            title,
             Status.SKIPPED,
-            "No installed plugins to compare",
+            ctx.tr("plugin.store.no_plugins"),
             source=EvidenceSource.DECKY_METADATA,
         )
     if not catalog:
         return result(
             ID,
-            TITLE,
+            title,
             Status.INFO,
-            "Plugin Store catalog is empty; skipped update matching",
-            explanation="Name matching is only attempted against a parsed store JSON array.",
+            ctx.tr("plugin.store.empty"),
+            explanation=ctx.tr("plugin.store.empty.explain"),
             source=EvidenceSource.NETWORK,
         )
 
@@ -118,14 +119,11 @@ def run(ctx: DiagnosticContext) -> CheckResult:
     if updates:
         return result(
             ID,
-            TITLE,
+            title,
             Status.WARNING,
-            f"{len(updates)} plugin(s) have a newer uniquely matched store version",
-            explanation=(
-                "Matched only when the local plugin.json name or directory maps to exactly one "
-                "store entry. Ambiguous names are ignored rather than guessed."
-            ),
-            recommendation="Update from the Decky Plugin Store when you trust the listing. DeckDoctor will not install plugins.",
+            ctx.tr("plugin.store.updates", count=len(updates)),
+            explanation=ctx.tr("plugin.store.updates.explain"),
+            recommendation=ctx.tr("plugin.store.updates.rec"),
             evidence=evidence[:40],
             source=EvidenceSource.NETWORK,
             severity=Severity.LOW,
@@ -134,20 +132,20 @@ def run(ctx: DiagnosticContext) -> CheckResult:
     if matched == 0:
         return result(
             ID,
-            TITLE,
+            title,
             Status.INFO,
-            "Installed plugins could not be uniquely matched to the Plugin Store",
-            explanation="Refusing to guess updates when names do not uniquely match store entries.",
+            ctx.tr("plugin.store.unmatched"),
+            explanation=ctx.tr("plugin.store.unmatched.explain"),
             evidence=evidence[:40],
             source=EvidenceSource.NETWORK,
             extra={"matched": 0},
         )
     return result(
         ID,
-        TITLE,
+        title,
         Status.PASS,
-        f"{matched} plugin(s) uniquely matched; none newer in the store",
-        explanation="Compared dotted versions only. Unparseable versions were skipped.",
+        ctx.tr("plugin.store.ok", matched=matched),
+        explanation=ctx.tr("plugin.store.ok.explain"),
         evidence=evidence[:40],
         source=EvidenceSource.NETWORK,
         extra={"matched": matched, "updates": []},

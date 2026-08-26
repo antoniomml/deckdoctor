@@ -77,6 +77,8 @@ class DiagnosticContext:
     facts: Facts = field(default_factory=Facts)
     locale: Locale = "en"
     ascii_mode: bool = False
+    verbose: bool = False
+    color: bool = False
     only_ids: frozenset[str] | None = None
     deadline: float | None = None
     _cmd_cache: dict[tuple[str, ...], CommandResult] = field(default_factory=dict)

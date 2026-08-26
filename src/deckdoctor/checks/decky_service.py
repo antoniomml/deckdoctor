@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from deckdoctor.checks._util import result
+from deckdoctor.checks._util import result, skip_no_decky
 from deckdoctor.context import DiagnosticContext
 from deckdoctor.models import CheckResult, EvidenceSource, Severity, Status
 
@@ -11,14 +11,10 @@ UNIT = "plugin_loader.service"
 
 
 def run(ctx: DiagnosticContext) -> CheckResult:
-    if ctx.facts.decky_installed is False:
-        return result(
-            ID,
-            TITLE,
-            Status.SKIPPED,
-            "Decky is not installed",
-            source=EvidenceSource.SYSTEMD,
-        )
+    title = ctx.tr(f"title.{ID}")
+    skipped = skip_no_decky(ctx, ID, title, source=EvidenceSource.SYSTEMD)
+    if skipped:
+        return skipped
 
     evidence: list[str] = []
     enabled = ctx.run(["systemctl", "is-enabled", UNIT])
@@ -36,9 +32,9 @@ def run(ctx: DiagnosticContext) -> CheckResult:
     if enabled.error == "not_found" and active.error == "not_found":
         return result(
             ID,
-            TITLE,
+            title,
             Status.SKIPPED,
-            "systemctl is not available",
+            ctx.tr("decky.service.no_systemctl"),
             source=EvidenceSource.SYSTEMD,
         )
 
@@ -65,11 +61,11 @@ def run(ctx: DiagnosticContext) -> CheckResult:
     if "not-found" in enabled_s or load_state == "not-found":
         return result(
             ID,
-            TITLE,
+            title,
             Status.FAIL,
-            "plugin_loader.service is not installed",
-            explanation="Homebrew files may exist, but systemd has no plugin_loader unit.",
-            recommendation="Re-run the official Decky installer so it installs the systemd unit.",
+            ctx.tr("decky.service.missing_unit"),
+            explanation=ctx.tr("decky.service.missing_unit.explain"),
+            recommendation=ctx.tr("decky.service.missing_unit.rec"),
             evidence=evidence,
             source=EvidenceSource.SYSTEMD,
             severity=Severity.HIGH,
@@ -78,11 +74,11 @@ def run(ctx: DiagnosticContext) -> CheckResult:
     if enabled_s == "masked" or "masked" in enabled_s:
         return result(
             ID,
-            TITLE,
+            title,
             Status.FAIL,
-            "plugin_loader.service is masked",
-            explanation="A masked unit will not start. DeckDoctor will not unmask it.",
-            recommendation="If you did not mask it on purpose, unmask via systemctl after reading systemd docs — or reinstall Decky.",
+            ctx.tr("decky.service.masked"),
+            explanation=ctx.tr("decky.service.masked.explain"),
+            recommendation=ctx.tr("decky.service.masked.rec"),
             evidence=evidence,
             source=EvidenceSource.SYSTEMD,
             severity=Severity.HIGH,
@@ -91,11 +87,11 @@ def run(ctx: DiagnosticContext) -> CheckResult:
     if active_s == "failed" or result_state == "failed":
         return result(
             ID,
-            TITLE,
+            title,
             Status.FAIL,
-            f"plugin_loader.service failed (result={result_state or active_s}, status={main_status})",
-            explanation="The Decky backend service is not running. This often follows a missing PluginLoader, bad permissions, or a corrupt unit file.",
-            recommendation="Read the backend logs section. Do not systemctl restart blindly until you know why it failed. DeckDoctor will not restart it.",
+            ctx.tr("decky.service.failed", result=result_state or active_s, status=main_status),
+            explanation=ctx.tr("decky.service.failed.explain"),
+            recommendation=ctx.tr("decky.service.failed.rec"),
             evidence=evidence,
             source=EvidenceSource.SYSTEMD,
             severity=Severity.HIGH,
@@ -105,47 +101,47 @@ def run(ctx: DiagnosticContext) -> CheckResult:
     if active_s in {"inactive", "dead"}:
         return result(
             ID,
-            TITLE,
+            title,
             Status.FAIL,
-            "plugin_loader.service is not running",
-            explanation="The unit exists but is inactive. Decky cannot inject into Steam without this service.",
-            recommendation="Start it only if you intend to: `systemctl start plugin_loader.service` (requires root). DeckDoctor will not do that.",
+            ctx.tr("decky.service.inactive"),
+            explanation=ctx.tr("decky.service.inactive.explain"),
+            recommendation=ctx.tr("decky.service.inactive.rec"),
             evidence=evidence,
             source=EvidenceSource.SYSTEMD,
             severity=Severity.HIGH,
         )
 
     if active_s == "active":
-        finding = "Service active"
+        finding = ctx.tr("decky.service.active")
         if enabled_s not in {"enabled", "enabled-runtime"}:
             finding += f" (enabled={enabled_s})"
         if nrestarts and nrestarts not in {"0", ""}:
             finding += f", NRestarts={nrestarts}"
             return result(
                 ID,
-                TITLE,
+                title,
                 Status.WARNING,
                 finding,
-                explanation="The service is up but has restarted recently. That can indicate a crash loop.",
+                explanation=ctx.tr("decky.service.restarts.explain"),
                 evidence=evidence,
                 source=EvidenceSource.SYSTEMD,
                 extra={"nrestarts": nrestarts},
             )
         return result(
             ID,
-            TITLE,
+            title,
             Status.PASS,
             finding,
-            explanation="systemd reports plugin_loader.service as active. DeckDoctor did not restart anything.",
+            explanation=ctx.tr("decky.service.ok.explain"),
             evidence=evidence,
             source=EvidenceSource.SYSTEMD,
         )
 
     return result(
         ID,
-        TITLE,
+        title,
         Status.UNKNOWN,
-        f"Unexpected service state: enabled={enabled_s} active={active_s}",
+        ctx.tr("decky.service.unknown", enabled=enabled_s, active=active_s),
         evidence=evidence,
         source=EvidenceSource.SYSTEMD,
     )

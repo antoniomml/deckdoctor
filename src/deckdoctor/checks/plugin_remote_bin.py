@@ -13,13 +13,14 @@ SIGNATURE = "Failed Downloading Remote Binaries"
 
 
 def run(ctx: DiagnosticContext) -> CheckResult:
+    title = ctx.tr(f"title.{ID}")
     plugins = ctx.facts.plugins or []
     if ctx.facts.decky_installed is False:
         return result(
             ID,
-            TITLE,
+            title,
             Status.SKIPPED,
-            "Decky is not installed",
+            ctx.tr("skip.decky_missing"),
             source=EvidenceSource.DECKY_METADATA,
         )
 
@@ -51,7 +52,7 @@ def run(ctx: DiagnosticContext) -> CheckResult:
             present = dest.is_file()
             evidence.append(f"{plugin['name']}: remote {name} → {'present' if present else 'MISSING'} ({dest})")
             if not present:
-                issues.append(f"{plugin['name']}: missing remote binary {name}")
+                issues.append(ctx.tr("plugin.bin.missing", plugin=plugin["name"], name=name))
 
     log_hit = SIGNATURE in log_text
     ctx.facts.remote_binary_log_hit = log_hit
@@ -59,17 +60,14 @@ def run(ctx: DiagnosticContext) -> CheckResult:
         evidence.append(f"log signature: {SIGNATURE}")
 
     if issues or log_hit:
-        finding = issues[0] if issues else f"Decky logged: {SIGNATURE}"
+        finding = issues[0] if issues else ctx.tr("plugin.bin.log")
         return result(
             ID,
-            TITLE,
+            title,
             Status.FAIL,
             finding,
-            explanation=(
-                "Plugins can declare extra GitHub/HTTP assets in package.json remote_binary. "
-                "A failed download leaves the plugin installed but non-functional. DeckDoctor did not download anything."
-            ),
-            recommendation="Fix network/GitHub access, then reinstall the affected plugin from the Decky store. Do not chmod 777.",
+            explanation=ctx.tr("plugin.bin.fail.explain"),
+            recommendation=ctx.tr("plugin.bin.fail.rec"),
             evidence=evidence[:20],
             source=EvidenceSource.DECKY_METADATA,
             severity=Severity.HIGH,
@@ -79,9 +77,9 @@ def run(ctx: DiagnosticContext) -> CheckResult:
     declared = sum(1 for p in plugins if p.get("remote_binary"))
     return result(
         ID,
-        TITLE,
+        title,
         Status.PASS,
-        f"No missing remote binaries ({declared} plugin(s) declare them)" if declared else "No plugins declare remote binaries",
+        ctx.tr("plugin.bin.ok_declared", count=declared) if declared else ctx.tr("plugin.bin.ok_none"),
         evidence=evidence or ["no remote_binary entries"],
         source=EvidenceSource.DECKY_METADATA,
     )

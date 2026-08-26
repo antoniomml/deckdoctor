@@ -30,7 +30,7 @@ from deckdoctor.checks.protocol import Check, FnCheck
 ALL_CHECKS: tuple[FnCheck, ...] = (
     FnCheck(sys_os.ID, sys_os.TITLE, False, sys_os.run),
     FnCheck(sys_os_channel.ID, sys_os_channel.TITLE, False, sys_os_channel.run),
-    FnCheck(sys_os_updater.ID, sys_os_updater.TITLE, True, sys_os_updater.run),
+    FnCheck(sys_os_updater.ID, sys_os_updater.TITLE, False, sys_os_updater.run),
     FnCheck(sys_os_reboot.ID, sys_os_reboot.TITLE, False, sys_os_reboot.run),
     FnCheck(sys_overlay.ID, sys_overlay.TITLE, False, sys_overlay.run),
     FnCheck(sys_disk.ID, sys_disk.TITLE, False, sys_disk.run),

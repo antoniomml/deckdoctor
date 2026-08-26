@@ -18,8 +18,8 @@ def _markdown(report: Report) -> str:
     lines = [
         t("report.title"),
         "",
-        f"- Tool version: `{report.version}`",
-        f"- Generated (UTC): `{report.generated_at}`",
+        t("report.tool_version", version=report.version),
+        t("report.generated", when=report.generated_at),
         t("report.posture"),
         t("report.sanitise"),
         "",

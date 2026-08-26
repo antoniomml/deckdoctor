@@ -1,15 +1,12 @@
 from __future__ import annotations
 
-from deckdoctor.checks._util import result
+from deckdoctor.checks._util import result, skip_not_steamos
 from deckdoctor.context import DiagnosticContext
 from deckdoctor.models import CheckResult, EvidenceSource, Severity, Status
 
 ID = "SYS-OVERLAY"
 TITLE = "SteamOS /etc overlay"
 
-# Valve has traced updater breakage to user-edited copies of these files in the
-# persistent overlay (SteamOS #1132, #1709). We only name those two; we do not
-# dump the whole overlay tree.
 WATCHED = (
     "steamos-atomupd/client.conf",
     "rauc/system.conf",
@@ -17,25 +14,20 @@ WATCHED = (
 
 
 def run(ctx: DiagnosticContext) -> CheckResult:
-    if ctx.facts.is_steamos is False:
-        return result(
-            ID,
-            TITLE,
-            Status.SKIPPED,
-            "Not SteamOS",
-            explanation="The /var/lib/overlays/etc/upper tree is a SteamOS A/B overlay.",
-            source=EvidenceSource.FILESYSTEM,
-        )
+    title = ctx.tr(f"title.{ID}")
+    skipped = skip_not_steamos(ctx, ID, title)
+    if skipped:
+        return skipped
 
     root = ctx.overlay_root
     evidence = [str(root)]
     if not ctx.exists(root):
         return result(
             ID,
-            TITLE,
-            Status.SKIPPED,
-            "SteamOS /etc overlay directory not present",
-            explanation="Without the overlay mount there is nothing to inspect. This is normal off-device.",
+            title,
+            Status.PASS,
+            ctx.tr("sys.overlay.missing"),
+            explanation=ctx.tr("sys.overlay.missing.explain"),
             evidence=evidence,
             source=EvidenceSource.FILESYSTEM,
         )
@@ -53,10 +45,10 @@ def run(ctx: DiagnosticContext) -> CheckResult:
     if not present:
         return result(
             ID,
-            TITLE,
+            title,
             Status.PASS,
-            "atomupd/rauc configs are not user-overlaid",
-            explanation="Did not find client.conf or rauc/system.conf under the /etc overlay.",
+            ctx.tr("sys.overlay.clean"),
+            explanation=ctx.tr("sys.overlay.clean.explain"),
             evidence=evidence,
             source=EvidenceSource.FILESYSTEM,
             extra={"edited": []},
@@ -65,18 +57,11 @@ def run(ctx: DiagnosticContext) -> CheckResult:
     names = ", ".join(present)
     return result(
         ID,
-        TITLE,
+        title,
         Status.WARNING,
-        f"User-edited overlay copies of {names}",
-        explanation=(
-            "These files in /var/lib/overlays/etc/upper replace the image copies after boot. "
-            "A stale client.conf or rauc/system.conf is a known way to break SteamOS updates. "
-            "DeckDoctor did not open or modify them."
-        ),
-        recommendation=(
-            "If the updater is failing, restore the image copies (remove those overlay files) "
-            "rather than hand-editing them. DeckDoctor will not delete overlay files."
-        ),
+        ctx.tr("sys.overlay.edited", names=names),
+        explanation=ctx.tr("sys.overlay.edited.explain"),
+        recommendation=ctx.tr("sys.overlay.edited.rec"),
         evidence=evidence,
         source=EvidenceSource.FILESYSTEM,
         severity=Severity.MEDIUM,

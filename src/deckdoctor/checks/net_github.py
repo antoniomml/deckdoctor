@@ -12,12 +12,13 @@ HEAD_URL = "https://github.com/"
 
 
 def run(ctx: DiagnosticContext) -> CheckResult:
+    title = ctx.tr(f"title.{ID}")
     if not ctx.network_enabled:
         return result(
             ID,
-            TITLE,
+            title,
             Status.SKIPPED,
-            "Network checks disabled",
+            ctx.tr("skip.no_network"),
             source=EvidenceSource.NETWORK,
         )
 
@@ -27,11 +28,11 @@ def run(ctx: DiagnosticContext) -> CheckResult:
         ctx.facts.github_reachable = False
         return result(
             ID,
-            TITLE,
+            title,
             Status.FAIL,
-            "github.com is not reachable",
-            explanation="Decky installs and many plugin remote binaries come from GitHub.",
-            recommendation="Check DNS and connectivity. DeckDoctor does not run speed tests.",
+            ctx.tr("net.gh.down"),
+            explanation=ctx.tr("net.gh.down.explain"),
+            recommendation=ctx.tr("net.gh.down.rec"),
             evidence=evidence,
             source=EvidenceSource.NETWORK,
             severity=Severity.HIGH,
@@ -43,10 +44,10 @@ def run(ctx: DiagnosticContext) -> CheckResult:
     if not api.ok:
         return result(
             ID,
-            TITLE,
+            title,
             Status.WARNING,
-            "GitHub is up but the rate-limit API could not be read",
-            explanation="GET /rate_limit does not consume the primary REST quota. This failure is separate from remaining=0.",
+            ctx.tr("net.gh.api_fail"),
+            explanation=ctx.tr("net.gh.api_fail.explain"),
             evidence=evidence + [api.body[:200]],
             source=EvidenceSource.NETWORK,
         )
@@ -63,9 +64,9 @@ def run(ctx: DiagnosticContext) -> CheckResult:
     except (TypeError, ValueError, AttributeError):
         return result(
             ID,
-            TITLE,
+            title,
             Status.UNKNOWN,
-            "Could not parse GitHub rate-limit JSON",
+            ctx.tr("net.gh.parse"),
             evidence=evidence + [api.body[:300]],
             source=EvidenceSource.NETWORK,
         )
@@ -76,20 +77,17 @@ def run(ctx: DiagnosticContext) -> CheckResult:
     reset_in = ""
     if reset:
         delta = max(0, reset - int(ctx.now.timestamp()))
-        reset_in = f"; reset in {delta // 60} min"
-    finding = f"GitHub reachable; API {remaining}/{limit} remaining{reset_in}"
+        reset_in = ctx.tr("net.gh.reset", minutes=delta // 60)
+    finding = ctx.tr("net.gh.ok", remaining=remaining, limit=limit, reset=reset_in)
 
     if remaining <= 0:
         return result(
             ID,
-            TITLE,
+            title,
             Status.FAIL,
-            "GitHub API rate limit exhausted",
-            explanation=(
-                "Unauthenticated GitHub REST allows 60 requests per hour per IP (CGNAT shares that quota). "
-                "The Decky GUI installer historically failed in this state and could skip downloading PluginLoader."
-            ),
-            recommendation="Wait for the reset time, switch to a different network (phone hotspot), then reinstall. DeckDoctor does not use your GitHub credentials.",
+            ctx.tr("net.gh.exhausted"),
+            explanation=ctx.tr("net.gh.exhausted.explain"),
+            recommendation=ctx.tr("net.gh.exhausted.rec"),
             evidence=evidence,
             source=EvidenceSource.NETWORK,
             severity=Severity.HIGH,
@@ -98,21 +96,21 @@ def run(ctx: DiagnosticContext) -> CheckResult:
     if remaining < 10:
         return result(
             ID,
-            TITLE,
+            title,
             Status.WARNING,
             finding,
-            explanation="Low remaining quota can still break the installer if it lists releases via the API.",
-            recommendation="Avoid re-running the installer until the quota resets if install already failed.",
+            explanation=ctx.tr("net.gh.low.explain"),
+            recommendation=ctx.tr("net.gh.low.rec"),
             evidence=evidence,
             source=EvidenceSource.NETWORK,
             extra={"remaining": remaining, "limit": limit},
         )
     return result(
         ID,
-        TITLE,
+        title,
         Status.PASS,
         finding,
-        explanation="Rate-limit lookup uses GET /rate_limit, which does not consume the primary quota.",
+        explanation=ctx.tr("net.gh.ok.explain"),
         evidence=evidence,
         source=EvidenceSource.NETWORK,
         extra={"remaining": remaining, "limit": limit},

@@ -161,6 +161,7 @@ def make_ctx(
     only_ids: frozenset[str] | None = None,
     deadline: float | None = None,
     ascii_mode: bool = False,
+    verbose: bool = False,
 ) -> DiagnosticContext:
     home = home or make_home(tmp)
     os_path = tmp / "os-release"
@@ -188,6 +189,7 @@ def make_ctx(
         only_ids=only_ids,
         deadline=deadline,
         ascii_mode=ascii_mode,
+        verbose=verbose,
     )
     return ctx
 

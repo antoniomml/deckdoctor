@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from deckdoctor.checks._util import relevant_log_lines, result
+from deckdoctor.checks._util import relevant_log_lines, result, skip_no_decky
 from deckdoctor.context import DiagnosticContext
 from deckdoctor.models import CheckResult, EvidenceSource, Status
 
@@ -11,22 +11,18 @@ JOURNAL_CMD = ["journalctl", "-b0", "-u", "plugin_loader.service", "-n", "200", 
 
 
 def run(ctx: DiagnosticContext) -> CheckResult:
-    if ctx.facts.decky_installed is False:
-        return result(
-            ID,
-            TITLE,
-            Status.SKIPPED,
-            "Decky is not installed",
-            source=EvidenceSource.JOURNAL,
-        )
+    title = ctx.tr(f"title.{ID}")
+    skipped = skip_no_decky(ctx, ID, title, source=EvidenceSource.JOURNAL)
+    if skipped:
+        return skipped
 
     proc = ctx.run(JOURNAL_CMD, timeout=20.0)
     if proc.error == "not_found":
         return result(
             ID,
-            TITLE,
+            title,
             Status.SKIPPED,
-            "journalctl is not available",
+            ctx.tr("decky.logs.no_journalctl"),
             source=EvidenceSource.JOURNAL,
         )
 
@@ -40,10 +36,10 @@ def run(ctx: DiagnosticContext) -> CheckResult:
     ):
         return result(
             ID,
-            TITLE,
+            title,
             Status.SKIPPED,
-            "System journal for plugin_loader.service is not readable",
-            explanation="DeckDoctor does not request sudo. Add the user to systemd-journal or re-run with privileges you already have.",
+            ctx.tr("decky.logs.denied"),
+            explanation=ctx.tr("decky.logs.denied.explain"),
             evidence=[proc.stderr.strip()[:400] or proc.stdout.strip()[:400]],
             source=EvidenceSource.JOURNAL,
         )
@@ -51,9 +47,9 @@ def run(ctx: DiagnosticContext) -> CheckResult:
     if proc.timed_out:
         return result(
             ID,
-            TITLE,
+            title,
             Status.UNKNOWN,
-            "journalctl timed out",
+            ctx.tr("decky.logs.timeout"),
             source=EvidenceSource.JOURNAL,
         )
 
@@ -77,10 +73,10 @@ def run(ctx: DiagnosticContext) -> CheckResult:
     if not lines:
         return result(
             ID,
-            TITLE,
+            title,
             Status.PASS,
-            "No recent backend ERROR/CRITICAL signatures in the current boot journal",
-            explanation="Warnings alone are not treated as failures. Older boots are ignored (`-b0`).",
+            ctx.tr("decky.logs.clean"),
+            explanation=ctx.tr("decky.logs.clean.explain"),
             evidence=["journal lines scanned from plugin_loader.service (boot 0)"],
             source=EvidenceSource.JOURNAL,
         )
@@ -89,11 +85,11 @@ def run(ctx: DiagnosticContext) -> CheckResult:
     status = Status.FAIL if high else Status.WARNING
     return result(
         ID,
-        TITLE,
+        title,
         status,
-        f"{len(lines)} relevant backend log line(s); signatures: {', '.join(found) or 'generic ERROR'}",
-        explanation="Matched concrete signatures, not every warning. Timestamps are whatever journalctl returned for this boot.",
-        recommendation="See the report excerpt. A single old ERROR is weaker evidence than a traceback on this boot.",
+        ctx.tr("decky.logs.hits", count=len(lines), signatures=", ".join(found) or "generic ERROR"),
+        explanation=ctx.tr("decky.logs.hits.explain"),
+        recommendation=ctx.tr("decky.logs.hits.rec"),
         evidence=lines[:15],
         source=EvidenceSource.JOURNAL,
         extra={"signatures": found},

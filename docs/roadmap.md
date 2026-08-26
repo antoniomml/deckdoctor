@@ -24,23 +24,11 @@ Shipped in 0.1: core types, MVP checks, human CLI + `--json` + `report`, pytest 
 - Bounded CEF / `steamloopback.host` excerpt in the report
 - Non-SteamOS images (Bazzite, ChimeraOS, …) skip atomupd/RAUC checks and still run Decky/Flatpak
 
-## 0.3 — Opt-in fixes (strict contract)
+## 0.3 — Opt-in fixes (this tree)
 
-A fix ships only if all of these are true:
+`deckdoctor` stays diagnose-by-default and compact. `deckdoctor fix` prints a plan; `--yes` applies only known reversible mutations (PluginLoader +x, CEF enable file, start `plugin_loader.service`, `flatpak update -y`). Never the default. Still forbidden: reboot, kill, `chmod 777`, `flatpak uninstall`, writing the read-only root, auto-reinstalling Decky.
 
-1. Exact mutation is known
-2. Reversible or trivially recoverable
-3. Documented
-4. Explicit confirmation (`deckdoctor fix NAME` prints a plan, requires `--yes`)
-5. Never the default of `deckdoctor`
-
-Candidates (not promises):
-
-- `decky.service` enable/start **after** showing `systemctl` plan (still controversial; may stay manual)
-- Restore a backup unit file if the live unit is GitHub 429 HTML
-- Document-only “run the official installer from a different network” for rate limit
-
-Still forbidden without a later design review: `chmod -R 777`, `rm -rf`, killing processes, `flatpak uninstall`, writing the read-only root.
+Also in 0.3: Spanish findings (not just chrome), compact CLI, `--verbose`, `deckdoctor checks`, hostname `steamdeck` no longer redacted, updater “no update available” false positive fixed, SteamOS checks skip unless the OS is actually SteamOS.
 
 ## Later / maybe never
 

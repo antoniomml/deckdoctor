@@ -33,8 +33,9 @@ def test_decky_missing(tmp_path: Path) -> None:
     ctx = make_ctx(tmp_path, home=home)
     report = diagnose(ctx)
     inst = next(r for r in report.results if r.check_id == "DECKY-INSTALL")
-    assert inst.status == Status.FAIL
+    assert inst.status == Status.INFO
     assert "not" in inst.finding.lower() or "does not" in inst.finding.lower()
+    assert inst not in report.problems
 
 
 def test_decky_service_failed(tmp_path: Path) -> None:
@@ -210,8 +211,10 @@ def test_no_network_skips(tmp_path: Path) -> None:
     assert "NET-GITHUB" in skipped
     assert "NET-STORE" in skipped
     assert "PLUGIN-STORE-UPDATES" in skipped
-    assert "SYS-OS-UPDATER" in skipped
     assert "FP-UPDATES" in skipped
+    updater = next(r for r in report.results if r.check_id == "SYS-OS-UPDATER")
+    assert updater.status == Status.PASS
+    assert "SYS-OS-UPDATER" not in skipped
     auto = next(r for r in report.results if r.check_id == "AUTOFLATPAKS")
     assert auto.status == Status.SKIPPED
     assert "not installed" in auto.finding.lower() or "no está" in auto.finding.lower()
@@ -372,6 +375,25 @@ VARIANT_ID=bazzite-deck
     assert overlay.status == Status.SKIPPED
     assert decky.status == Status.PASS
     assert ctx.facts.os_family == "bazzite"
+
+
+def test_no_update_available_is_not_an_update(tmp_path: Path) -> None:
+    ctx = make_ctx(tmp_path)
+    report = diagnose(ctx)
+    upd = next(r for r in report.results if r.check_id == "SYS-OS-UPDATER")
+    assert upd.status == Status.PASS
+    assert "available" not in upd.finding.lower() or "no update" in upd.finding.lower()
+
+
+def test_unknown_os_skips_steamos_reboot(tmp_path: Path) -> None:
+    ctx = make_ctx(tmp_path)
+    ctx.os_release_path = tmp_path / "missing-os-release"
+    report = diagnose(ctx)
+    osver = next(r for r in report.results if r.check_id == "SYS-OS-VERSION")
+    reboot = next(r for r in report.results if r.check_id == "SYS-OS-REBOOT")
+    assert osver.status == Status.UNKNOWN
+    assert reboot.status == Status.SKIPPED
+    assert ctx.facts.is_steamos is False
 
 
 def test_version_is_newer_is_conservative() -> None:
