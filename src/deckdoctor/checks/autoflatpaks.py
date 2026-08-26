@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from deckdoctor.checks._util import flatpak_remote_from_stderr, result
+from deckdoctor.checks._util import flatpak_remote_delete_cmds, flatpak_remote_from_stderr, result
 from deckdoctor.context import DiagnosticContext
 from deckdoctor.models import CheckResult, EvidenceSource, Status
 
@@ -79,6 +79,7 @@ def run(ctx: DiagnosticContext) -> CheckResult:
 
     if ctx.facts.flatpak_failed_remotes:
         remote = ", ".join(ctx.facts.flatpak_failed_remotes)
+        cmd = flatpak_remote_delete_cmds(ctx.facts.flatpak_remotes_raw or "", ctx.facts.flatpak_failed_remotes)
         ctx.facts.autoflatpaks_remote_list_failed = True
         return result(
             ID,
@@ -86,7 +87,7 @@ def run(ctx: DiagnosticContext) -> CheckResult:
             Status.FAIL,
             ctx.tr("auto.remote_fail.named", remote=remote),
             explanation=ctx.tr("auto.remote_fail.explain"),
-            recommendation=ctx.tr("auto.remote_fail.named.rec", remote=remote),
+            recommendation=ctx.tr("auto.remote_fail.named.rec", remote=remote, cmd=cmd),
             evidence=evidence + [f"failed remotes from FP-UPDATES: {remote}"],
             source=EvidenceSource.FLATPAK,
             extra={"remote_hint": remote, "log_fail": log_fail},
@@ -116,7 +117,11 @@ def run(ctx: DiagnosticContext) -> CheckResult:
         remote_hint = flatpak_remote_from_stderr(listing.stderr)
         ctx.facts.autoflatpaks_remote_list_failed = True
         finding = ctx.tr("auto.remote_fail.named", remote=remote_hint) if remote_hint else ctx.tr("auto.remote_fail")
-        rec = ctx.tr("auto.remote_fail.named.rec", remote=remote_hint) if remote_hint else ctx.tr("auto.remote_fail.rec")
+        if remote_hint:
+            cmd = flatpak_remote_delete_cmds(ctx.facts.flatpak_remotes_raw or "", remote_hint)
+            rec = ctx.tr("auto.remote_fail.named.rec", remote=remote_hint, cmd=cmd)
+        else:
+            rec = ctx.tr("auto.remote_fail.rec")
         return result(
             ID,
             title,

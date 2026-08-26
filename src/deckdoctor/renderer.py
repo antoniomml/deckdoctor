@@ -198,17 +198,20 @@ def _summary_line(report: Report, *, color: bool) -> str:
             skip=n["skip"],
             unknown=n["unknown"],
         )
-    bits = [_paint(translate(locale, "ui.tally.ok", n=n["ok"]), _GREEN, on=color)]
+    if report.partial and n["ok"] == 0:
+        bits = []
+    else:
+        bits = [_paint(translate(locale, "ui.tally.ok", n=n["ok"]), _GREEN, on=color)]
     if n["fail"]:
         bits.append(_paint(translate(locale, "ui.tally.fail", n=n["fail"]), _RED, on=color))
     if n["warn"]:
         bits.append(_paint(translate(locale, "ui.tally.warn", n=n["warn"]), _YELLOW, on=color))
-    if report.verbose:
+    if report.verbose or report.partial:
         if n["skip"]:
             bits.append(_paint(translate(locale, "ui.tally.skip", n=n["skip"]), _DIM, on=color))
         if n["unknown"]:
             bits.append(_paint(translate(locale, "ui.tally.unknown", n=n["unknown"]), _YELLOW, on=color))
-    return "    ".join(bits)
+    return "    ".join(bits) if bits else translate(locale, "ui.partial")
 
 
 def _hint(key: str, text: str, *, ascii_mode: bool) -> str:
@@ -310,6 +313,17 @@ def _problem_lines(report: Report, *, compact: bool) -> list[str]:
     return lines
 
 
+def _incomplete_block(report: Report) -> list[str]:
+    locale = report.locale
+    color = report.color
+    mark = "!" if report.ascii_mode else "⚠️"
+    lines = [_paint(f"{mark}  {translate(locale, 'ui.incomplete')}", _YELLOW + _BOLD if color else "", on=color)]
+    lines.extend(_fill(translate(locale, "ui.partial"), indent="    "))
+    lines.extend(_rec_lines(f"{_arrow(report.ascii_mode)} {translate(locale, 'ui.incomplete.rec')}", indent="    ", color=color))
+    lines.append("")
+    return lines
+
+
 def _render_compact(report: Report, *, plans: list[FixPlan] | None) -> str:
     locale = report.locale
     color = report.color
@@ -324,8 +338,11 @@ def _render_compact(report: Report, *, plans: list[FixPlan] | None) -> str:
     notes = _compact_notes(report)
     problems = report.problems
     if not problems and not stories and not notes:
-        ok = "✅  " if not report.ascii_mode else ""
-        lines.append(_paint(f"{ok}{translate(locale, 'ui.no_problems')}", _GREEN + _BOLD if color else "", on=color))
+        if report.partial:
+            lines.extend(_incomplete_block(report))
+        else:
+            ok = "✅  " if not report.ascii_mode else ""
+            lines.append(_paint(f"{ok}{translate(locale, 'ui.no_problems')}", _GREEN + _BOLD if color else "", on=color))
         lines.extend(_footer(report, plans, color=color))
         return _join(lines)
 
@@ -382,8 +399,11 @@ def _render_verbose(report: Report, *, plans: list[FixPlan] | None) -> str:
     if report.diagnoses:
         lines.extend(_diagnosis_block(report, heading=True))
     elif not report.problems:
-        ok = "✅  " if not report.ascii_mode else ""
-        lines.append(_paint(f"{ok}{translate(locale, 'ui.no_problems')}", _GREEN + _BOLD if color else "", on=color))
+        if report.partial:
+            lines.extend(_incomplete_block(report))
+        else:
+            ok = "✅  " if not report.ascii_mode else ""
+            lines.append(_paint(f"{ok}{translate(locale, 'ui.no_problems')}", _GREEN + _BOLD if color else "", on=color))
 
     lines.extend(_footer(report, plans, color=color))
     return _join(lines)

@@ -55,5 +55,5 @@ False-positive risk: `low | medium | high`.
 - **SYS-OS-UPDATER:** if the check command times out or the daemon is dead, status is `FAIL` or `UNKNOWN`, never PASS “up to date”.
 - **DECKY-PORTS:** expected owner of 8080 is `steamwebhelper`; of 1337 is `PluginLoader`. A listen line **without** a process name is not a conflict (non-root `ss` hides root sockets). If `systemctl show` gives `MainPID`, `/proc/<pid>/comm` may fill the name when it looks like PluginLoader. `*:8081` is attributed: if `~/homebrew/settings/loader.json` has `cef_forward: true`, it is INFO (Decky toggle; CSS Loader using themes does not need it). Otherwise WARNING, naming the process. Do not kill the occupant.
 - **DECKY-FRONTEND:** localhost HTTP is not “network” in the privacy sense; `--no-network` still allows it.
-- **AUTOFLATPAKS:** SKIPPED with INFO if the plugin directory is absent. Do not copy AutoFlatpaks’ regex parser.
+- **AUTOFLATPAKS:** SKIPPED with INFO if the plugin directory is absent. Do not copy AutoFlatpaks’ regex parser. A named failing remote is a FAIL with a suggested `flatpak remote-delete --user|--system <name>` command; DeckDoctor does not run it.
 - **GitHub:** only `rate_limit` + `github.com` HEAD (+ optional latest-release redirect). No user credentials.

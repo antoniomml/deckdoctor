@@ -46,6 +46,10 @@ English unless `--lang es` or `DECKDOCTOR_LANG`. Compact diagnose drops repeated
 
 DECKY-PORTS names the process on 8081 and reads Decky `cef_forward`. If the setting is on (CSS Loader is named when present), it is an INFO note, not a warning: using themes does not need LAN exposure. If the setting is off, it stays a warning and calls out a leftover unit.
 
+## 0.3.6 — Honest re-diagnose after fix
+
+`deckdoctor fix` gives the second diagnose a fresh timeout, so a long `flatpak update` cannot fake an All clear. A timed-out update is a failed fix, not success. A partial report says Incomplete. Broken remotes get a suggested `flatpak remote-delete --user|--system <name>`; DeckDoctor still does not delete them.
+
 ## 0.3.1 — Public landing
 
 English README aimed at Deck users, not developers. Compact CLI uses emoji marks and plain-language labels. Spanish is opt-in (`--lang es` or `DECKDOCTOR_LANG`).

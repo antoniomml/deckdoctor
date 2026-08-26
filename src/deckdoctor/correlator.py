@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from deckdoctor.checks._util import flatpak_remote_delete_cmds
 from deckdoctor.facts import Facts
 from deckdoctor.i18n import translate
 from deckdoctor.models import CheckResult, Confidence, Diagnosis, Severity, Status
@@ -100,11 +101,11 @@ def correlate(results: list[CheckResult], facts: Facts, locale: str = "en") -> l
 
     if facts.autoflatpaks_installed and facts.autoflatpaks_remote_list_failed:
         remotes = ", ".join(facts.flatpak_failed_remotes)
-        rec = (
-            translate(locale, "diag.autoflatpaks.rec.named", remote=remotes)
-            if remotes
-            else t("diag.autoflatpaks.rec")
-        )
+        if remotes:
+            cmd = flatpak_remote_delete_cmds(facts.flatpak_remotes_raw or "", facts.flatpak_failed_remotes)
+            rec = translate(locale, "diag.autoflatpaks.rec.named", remote=remotes, cmd=cmd)
+        else:
+            rec = t("diag.autoflatpaks.rec")
         found.append(
             Diagnosis(
                 title=t("diag.autoflatpaks.title"),

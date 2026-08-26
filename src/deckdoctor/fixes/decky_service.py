@@ -37,7 +37,7 @@ def plan(ctx: DiagnosticContext, report: Report) -> FixPlan | None:
 
 
 def apply(ctx: DiagnosticContext, executor: FixExecutor) -> FixResult:
-    timeout = ctx.remaining_timeout(30.0)
+    timeout = 30.0
     attempts = [
         ["systemctl", "enable", "--now", _UNIT],
         ["systemctl", "--user", "enable", "--now", _UNIT],

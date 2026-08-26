@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from deckdoctor.checks._util import (
+    flatpak_remote_delete_cmds,
     flatpak_remote_from_stderr,
     parse_flatpak_remotes,
     result,
@@ -143,13 +144,20 @@ def run(ctx: DiagnosticContext) -> CheckResult:
         finding = ctx.tr("fp.upd.some", count=len(rows))
         if failed:
             finding = ctx.tr("fp.upd.some_and_remote", count=len(rows), remote=", ".join(failed))
+        rec = ctx.tr("fp.upd.some.rec")
+        if failed:
+            rec = ctx.tr(
+                "fp.upd.some_and_remote.rec",
+                remote=", ".join(failed),
+                cmd=flatpak_remote_delete_cmds(ctx.facts.flatpak_remotes_raw or "", failed),
+            )
         return result(
             ID,
             title,
             Status.WARNING,
             finding,
             explanation=ctx.tr("fp.upd.some.explain") if not failed else ctx.tr("fp.upd.partial.explain"),
-            recommendation=ctx.tr("fp.upd.some.rec"),
+            recommendation=rec,
             evidence=evidence + rows[:20],
             source=EvidenceSource.FLATPAK,
             severity=Severity.MEDIUM,
@@ -160,6 +168,8 @@ def run(ctx: DiagnosticContext) -> CheckResult:
         probed_ok = any(line.endswith("exit 0") and "remote-ls --" in line for line in evidence)
         ctx.facts.flatpak_update_check = "partial" if probed_ok else "failed"
         remote = ", ".join(failed)
+        cmd = flatpak_remote_delete_cmds(ctx.facts.flatpak_remotes_raw or "", failed)
+        rec = ctx.tr("fp.upd.fail.remote.rec", remote=remote, cmd=cmd)
         if probed_ok:
             return result(
                 ID,
@@ -167,7 +177,7 @@ def run(ctx: DiagnosticContext) -> CheckResult:
                 Status.WARNING,
                 ctx.tr("fp.upd.fail.remote", remote=remote),
                 explanation=ctx.tr("fp.upd.partial.explain"),
-                recommendation=ctx.tr("fp.upd.fail.remote.rec", remote=remote),
+                recommendation=rec,
                 evidence=evidence,
                 source=EvidenceSource.FLATPAK,
                 severity=Severity.MEDIUM,
@@ -179,7 +189,7 @@ def run(ctx: DiagnosticContext) -> CheckResult:
             Status.FAIL,
             ctx.tr("fp.upd.fail.remote", remote=remote) if remote else ctx.tr("fp.upd.fail"),
             explanation=ctx.tr("fp.upd.fail.explain"),
-            recommendation=ctx.tr("fp.upd.fail.remote.rec", remote=remote) if remote else ctx.tr("fp.upd.fail.rec"),
+            recommendation=rec if remote else ctx.tr("fp.upd.fail.rec"),
             evidence=evidence,
             source=EvidenceSource.FLATPAK,
             extra={"stderr": (upd_err or stderr)[:1000], "failed_remotes": failed},

@@ -44,6 +44,18 @@ def test_autoflatpaks_remote() -> None:
     assert any("AutoFlatpaks" in d.title for d in diags)
 
 
+def test_flatpak_remote_delete_cmd_uses_scope() -> None:
+    from deckdoctor.checks._util import flatpak_remote_delete_cmds
+
+    raw = "flathub\tsystem\thttps://dl.flathub.org/repo/\nonepassword-origin\tuser\thttps://example\n"
+    assert (
+        flatpak_remote_delete_cmds(raw, ["onepassword-origin"])
+        == "flatpak remote-delete --user onepassword-origin"
+    )
+    assert flatpak_remote_delete_cmds(raw, "flathub") == "flatpak remote-delete --system flathub"
+    assert flatpak_remote_delete_cmds("", "mystery") == "flatpak remote-delete --user mystery"
+
+
 def test_autoflatpaks_remote_names_the_remote() -> None:
     facts = Facts(
         autoflatpaks_installed=True,
@@ -53,6 +65,7 @@ def test_autoflatpaks_remote_names_the_remote() -> None:
     diags = correlate([], facts)
     rec = " ".join(d.recommendation for d in diags)
     assert "onepassword-origin" in rec
+    assert "flatpak remote-delete --user onepassword-origin" in rec
 
 
 def test_steam_beta_likely() -> None:

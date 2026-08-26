@@ -178,9 +178,12 @@ def _main(argv: list[str] | None) -> int:
     if args.target and args.command != "fix":
         parser.error(translate(locale, "cli.target"))
 
-    deadline = None
-    if args.timeout and args.timeout > 0:
-        deadline = time.monotonic() + float(args.timeout)
+    def _deadline() -> float | None:
+        if args.timeout and args.timeout > 0:
+            return time.monotonic() + float(args.timeout)
+        return None
+
+    deadline = _deadline()
     color = _use_color(args)
     ctx = build_context(
         network=not args.no_network,
@@ -212,7 +215,7 @@ def _main(argv: list[str] | None) -> int:
             locale=locale,
             ascii_mode=bool(args.ascii),
             only_ids=parse_only_ids(args.only),
-            deadline=deadline,
+            deadline=_deadline(),
             verbose=bool(args.verbose),
             color=color,
         )

@@ -65,6 +65,30 @@ def test_flatpak_update_plan(tmp_path: Path) -> None:
     assert any(p.id == "flatpak-update" for p in plans)
 
 
+def test_flatpak_update_timeout_is_not_success(tmp_path: Path) -> None:
+    from deckdoctor.fixes import FakeFixExecutor, flatpak_update
+
+    ctx = make_ctx(tmp_path)
+    executor = FakeFixExecutor()
+    executor.mapping[("flatpak", "update", "-y")] = CommandResult(
+        ("flatpak", "update", "-y"),
+        124,
+        "",
+        "timed out",
+        timed_out=True,
+        error="timeout",
+    )
+    executor.mapping[("flatpak", "--user", "update", "-y")] = CommandResult(
+        ("flatpak", "--user", "update", "-y"),
+        0,
+        "",
+        "",
+    )
+    result = flatpak_update.apply(ctx, executor)
+    assert not result.ok
+    assert "timed out" in result.finding.lower()
+
+
 def test_missing_decky_has_no_decky_fixes(tmp_path: Path) -> None:
     home = make_home(tmp_path, with_decky=False)
     ctx = make_ctx(tmp_path, home=home)

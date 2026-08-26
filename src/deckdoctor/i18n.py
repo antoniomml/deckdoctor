@@ -16,7 +16,7 @@ _EN: dict[str, str] = {
     "cli.target": "Optional fix id (only with the fix command)",
     "cli.ascii": "Use ASCII status marks (OK/X/!) instead of Unicode",
     "cli.only": "Run only these check IDs (comma-separated)",
-    "cli.timeout": "Global deadline in seconds (0 disables). Default: 60",
+    "cli.timeout": "Deadline per diagnose pass in seconds (0 disables). Default: 60",
     "cli.lang": "UI language: en or es (default: en)",
     "cli.verbose": "Show every check, including PASS and SKIPPED",
     "cli.no_color": "Disable ANSI colours",
@@ -41,6 +41,8 @@ _EN: dict[str, str] = {
     "ui.no_problems": "All clear",
     "ui.no_problems.detail": "Nothing failed.",
     "ui.partial": "Stopped early: some checks did not run (time limit).",
+    "ui.incomplete": "Incomplete",
+    "ui.incomplete.rec": "Run `deckdoctor` again. This pass did not finish.",
     "ui.report_hint": "deckdoctor report     Discord report",
     "ui.verbose_hint": "deckdoctor -v         every check",
     "ui.fix_hint": "deckdoctor fix        {count} safe plan(s)",
@@ -115,6 +117,7 @@ _EN: dict[str, str] = {
     "fix.decky.fail": "systemctl could not start plugin_loader.service",
     "fix.flatpak.ok": "flatpak update finished",
     "fix.flatpak.fail": "flatpak update failed",
+    "fix.flatpak.timeout": "flatpak update timed out; some apps may still need updating. Run `deckdoctor fix` again.",
     "checks.header": "Checks",
     "checks.col.id": "ID",
     "checks.col.net": "Network",
@@ -189,7 +192,9 @@ _EN: dict[str, str] = {
     ),
     "diag.autoflatpaks.rec": "Fix or remove the failing Flatpak remote yourself. DeckDoctor will not delete remotes.",
     "diag.autoflatpaks.rec.named": (
-        "Fix or remove the '{remote}' Flatpak remote yourself. DeckDoctor will not delete remotes."
+        "If you do not need '{remote}', run `{cmd}`. Expired GPG is common. "
+        "Installed apps stay; add the vendor remote again if you still want its updates. "
+        "DeckDoctor will not delete remotes."
     ),
     "diag.overlay.title": "User-overlaid atomupd/rauc config and updater failure",
     "diag.overlay.summary": (
@@ -211,7 +216,7 @@ _ES: dict[str, str] = {
     "cli.target": "Id de arreglo (solo con el comando fix)",
     "cli.ascii": "Usar marcas ASCII (OK/X/!) en lugar de Unicode",
     "cli.only": "Ejecutar solo estos IDs de check (separados por comas)",
-    "cli.timeout": "Límite global en segundos (0 lo desactiva). Por defecto: 60",
+    "cli.timeout": "Límite por pasada de diagnóstico en segundos (0 lo desactiva). Por defecto: 60",
     "cli.lang": "Idioma de la interfaz: en o es (por defecto: en)",
     "cli.verbose": "Mostrar cada check, incluidos PASS y SKIPPED",
     "cli.no_color": "Desactivar colores ANSI",
@@ -236,6 +241,8 @@ _ES: dict[str, str] = {
     "ui.no_problems": "Todo en orden",
     "ui.no_problems.detail": "Nada falló.",
     "ui.partial": "Se paró antes de tiempo: algunas comprobaciones no se ejecutaron.",
+    "ui.incomplete": "Incompleto",
+    "ui.incomplete.rec": "Vuelve a ejecutar `deckdoctor`. Esta pasada no terminó.",
     "ui.report_hint": "deckdoctor report     informe para Discord",
     "ui.verbose_hint": "deckdoctor -v         cada comprobación",
     "ui.fix_hint": "deckdoctor fix        {count} plan(es) seguro(s)",
@@ -310,6 +317,7 @@ _ES: dict[str, str] = {
     "fix.decky.fail": "systemctl no pudo arrancar plugin_loader.service",
     "fix.flatpak.ok": "flatpak update terminó",
     "fix.flatpak.fail": "flatpak update falló",
+    "fix.flatpak.timeout": "flatpak update agotó el tiempo; pueden quedar apps. Vuelve a ejecutar `deckdoctor fix`.",
     "checks.header": "Checks",
     "checks.col.id": "ID",
     "checks.col.net": "Red",
@@ -384,7 +392,9 @@ _ES: dict[str, str] = {
     ),
     "diag.autoflatpaks.rec": "Repara o elimina tú el remoto Flatpak que falla. DeckDoctor no borra remotos.",
     "diag.autoflatpaks.rec.named": (
-        "Repara o elimina tú el remoto Flatpak '{remote}'. DeckDoctor no borra remotos."
+        "Si no necesitas '{remote}', ejecuta `{cmd}`. Una clave GPG caducada es habitual. "
+        "Las apps instaladas se quedan; vuelve a añadir el remoto del fabricante si quieres sus actualizaciones. "
+        "DeckDoctor no borra remotos."
     ),
     "diag.overlay.title": "Config atomupd/rauc en overlay y fallo del actualizador",
     "diag.overlay.summary": (

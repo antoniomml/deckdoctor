@@ -93,6 +93,10 @@ def test_global_timeout_marks_partial(tmp_path: Path) -> None:
     report = diagnose(ctx)
     assert report.partial
     assert all(r.status == Status.SKIPPED for r in report.results)
+    text = render_cli(report)
+    assert "All clear" not in text
+    assert "Incomplete" in text
+    assert "Stopped early" in text
 
 
 def test_compact_hides_skipped(tmp_path: Path) -> None:
@@ -139,15 +143,17 @@ def test_compact_broken_remote_is_short_and_english(tmp_path: Path) -> None:
     ctx = make_ctx(tmp_path, home=home, commands=commands)
     report = diagnose(ctx)
     text = render_cli(report)
+    blob = " ".join(text.split())
     assert "onepassword-origin" in text
     assert "Cannot list remotes" in text
+    assert "flatpak remote-delete --user onepassword-origin" in blob
     assert "FACT:" not in text
     assert "What's going on" not in text
     assert "Problems" not in text
     assert "AutoFlatpaks is installed. Current versions" not in text
     assert "grave" not in text
     assert "aviso" not in text
-    assert "`deckdoctor fix` can apply the updates." in text
+    assert "`deckdoctor fix` can apply the updates" in text
 
 
 def test_verbose_shows_check_ids(tmp_path: Path) -> None:

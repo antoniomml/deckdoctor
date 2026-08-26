@@ -294,7 +294,11 @@ CHECK_EN: dict[str, str] = {
         "Inspect `flatpak remotes`. If a remote you do not need is failing, you can remove it yourself. "
         "DeckDoctor will not delete them."
     ),
-    "auto.remote_fail.named.rec": "Fix or remove '{remote}' yourself (expired GPG is common).",
+    "auto.remote_fail.named.rec": (
+        "If you do not need '{remote}', run `{cmd}` (expired GPG is common). "
+        "Installed apps stay; add the vendor remote again if you still want its updates. "
+        "DeckDoctor will not delete remotes."
+    ),
     "auto.logs": "AutoFlatpaks logs look unhappy even though remote-ls succeeded now",
     "auto.logs.explain": "The plugin may have failed earlier. Current Flatpak listing works.",
     "auto.ok": "AutoFlatpaks installed; Flatpak remote listing succeeded",
@@ -319,7 +323,7 @@ CHECK_EN: dict[str, str] = {
     "fp.upd.fail.explain": "The remote query failed. DeckDoctor will not report this as 0 updates.",
     "fp.upd.fail.rec": "Inspect remotes (`flatpak remotes`) and stderr. Stale remotes are a common cause.",
     "fp.upd.fail.remote.rec": (
-        "Fix or remove the '{remote}' remote (`flatpak remotes`). Expired GPG keys are a common cause. "
+        "If you do not need '{remote}', run `{cmd}`. Expired GPG keys are a common cause. "
         "DeckDoctor will not delete remotes."
     ),
     "fp.upd.none": "No Flatpak updates reported",
@@ -328,7 +332,10 @@ CHECK_EN: dict[str, str] = {
     "fp.upd.some.explain": "Listed only. Diagnose did not apply updates.",
     "fp.upd.some.rec": "`deckdoctor fix` can apply the updates.",
     "fp.upd.some_and_remote": "{count} update(s) available; remote '{remote}' failed",
-    "fp.upd.some_and_remote.rec": "`deckdoctor fix` can apply the updates.",
+    "fp.upd.some_and_remote.rec": (
+        "`deckdoctor fix` can apply the updates from healthy remotes. "
+        "If you do not need '{remote}', run `{cmd}`."
+    ),
     "fp.upd.partial.explain": (
         "A broken remote blocked the combined listing. Other remotes were checked one by one, "
         "so updates from healthy remotes are still listed. DeckDoctor will not delete remotes."
@@ -653,7 +660,11 @@ CHECK_ES: dict[str, str] = {
         "Inspecciona `flatpak remotes`. Si un remoto que no necesitas falla, puedes quitarlo tú. "
         "DeckDoctor no los borra."
     ),
-    "auto.remote_fail.named.rec": "Repara o elimina '{remote}' tú (una clave GPG caducada es habitual).",
+    "auto.remote_fail.named.rec": (
+        "Si no necesitas '{remote}', ejecuta `{cmd}` (una clave GPG caducada es habitual). "
+        "Las apps instaladas se quedan; vuelve a añadir el remoto del fabricante si quieres sus actualizaciones. "
+        "DeckDoctor no borra remotos."
+    ),
     "auto.logs": "Los logs de AutoFlatpaks se ven mal aunque remote-ls ahora funciona",
     "auto.logs.explain": "El plugin pudo haber fallado antes. El listado Flatpak actual funciona.",
     "auto.ok": "AutoFlatpaks instalado; el listado remoto de Flatpak funcionó",
@@ -678,7 +689,7 @@ CHECK_ES: dict[str, str] = {
     "fp.upd.fail.explain": "La consulta remota falló. DeckDoctor no lo reportará como 0 actualizaciones.",
     "fp.upd.fail.rec": "Inspecciona remotos (`flatpak remotes`) y stderr. Los remotos obsoletos son una causa habitual.",
     "fp.upd.fail.remote.rec": (
-        "Repara o elimina el remoto '{remote}' (`flatpak remotes`). Las claves GPG caducadas son una causa habitual. "
+        "Si no necesitas '{remote}', ejecuta `{cmd}`. Las claves GPG caducadas son una causa habitual. "
         "DeckDoctor no borra remotos."
     ),
     "fp.upd.none": "No hay actualizaciones Flatpak reportadas",
@@ -687,7 +698,10 @@ CHECK_ES: dict[str, str] = {
     "fp.upd.some.explain": "Solo se listan. El diagnóstico no aplicó actualizaciones.",
     "fp.upd.some.rec": "`deckdoctor fix` puede aplicar las actualizaciones.",
     "fp.upd.some_and_remote": "{count} actualización(es) disponible(s); falló el remoto '{remote}'",
-    "fp.upd.some_and_remote.rec": "`deckdoctor fix` puede aplicar las actualizaciones.",
+    "fp.upd.some_and_remote.rec": (
+        "`deckdoctor fix` puede aplicar las actualizaciones de los remotos sanos. "
+        "Si no necesitas '{remote}', ejecuta `{cmd}`."
+    ),
     "fp.upd.partial.explain": (
         "Un remoto roto bloqueó el listado conjunto. Se consultaron los demás de uno en uno, "
         "así que las actualizaciones de remotos sanos sí aparecen. DeckDoctor no borra remotos."

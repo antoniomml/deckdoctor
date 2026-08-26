@@ -139,6 +139,21 @@ def parse_flatpak_remotes(text: str) -> list[tuple[str, str]]:
     return rows
 
 
+def flatpak_remote_delete_cmds(remotes_raw: str, names: Iterable[str] | str) -> str:
+    """Suggest ``flatpak remote-delete``; never run it. Default scope is ``--user``."""
+    wanted = [names] if isinstance(names, str) else list(names)
+    parts: list[str] = []
+    seen: set[str] = set()
+    scopes = {name: scope for name, scope in parse_flatpak_remotes(remotes_raw)}
+    for raw in wanted:
+        for name in (bit.strip() for bit in str(raw).split(",")):
+            if not name or name in seen:
+                continue
+            seen.add(name)
+            parts.append(f"flatpak remote-delete {scopes.get(name, '--user')} {name}")
+    return "; ".join(parts)
+
+
 LOG_SIGNATURES = (
     "CRITICAL",
     "Traceback",

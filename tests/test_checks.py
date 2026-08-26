@@ -219,6 +219,7 @@ def test_flatpak_lists_updates_when_one_remote_is_broken(tmp_path: Path) -> None
     assert "onepassword" in updates.finding.lower()
     assert auto.status == Status.FAIL
     assert "onepassword" in auto.finding.lower()
+    assert "flatpak remote-delete --user onepassword-origin" in auto.recommendation
     from deckdoctor.fixes import collect_plans
 
     assert any(p.id == "flatpak-update" for p in collect_plans(ctx, report))
