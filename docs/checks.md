@@ -15,12 +15,12 @@ False-positive risk: `low | medium | high`.
 | SYS-OS-VERSION | SteamOS version and build | `/etc/os-release`, atomupd manifest if present | read files | info | low | no | no | yes |
 | SYS-OS-CHANNEL | SteamOS update channel | `steamos-select-branch` output | `steamos-select-branch` / `-c` | info | low | no | no | yes |
 | SYS-OS-UPDATER | Updater can *check*; pending update vs broken vs unknown | atomupd D-Bus / manager / `steamos-update check` / `--query-only`; never scrape the web | `atomupd-manager check` or `get-update-status`; `steamos-update check`; `steamos-atomupd-client --query-only` | high if check fails | medium (exit codes vary) | optional (check talks to Valve) | no if D-Bus works; else SKIPPED | yes |
-| SYS-DISK | Free space on user home and `/var` (never treat the A/B root `/` as the worst mount) | `shutil.disk_usage` | home + `/var`, deduped by `st_dev` | high if &lt;500MB; warn &lt;2GB | low | no | no | yes |
+| SYS-DISK | Free space on user home, `/var`, `/var/lib/flatpak`, Steam libraries (`libraryfolders.vdf`), and `/run/media/$USER` (never treat the A/B root `/` or AppImage fuse mounts as the worst mount) | `shutil.disk_usage` | home + `/var` + Flatpak dir + VDF paths + removable media, deduped by `st_dev`. Skip `/tmp/.mount_*`. Large volumes: high if &lt;500MB, warn &lt;2GB. Tiny volumes (SteamOS `/var` ~230MB): percent full, not absolute MB | high if actually full | low | no | no | yes |
 | SYS-TIME | Clock clearly wrong / NTP not synced | `timedatectl` | `timedatectl show` | medium | medium | no | no | yes |
 | STEAM-CLIENT | Steam client build and channel | logs / package manifest / VDF | read `~/.steam/steam/logs`, `package/`, config VDF | info; warn on Beta as correlation factor only | medium (parse) | no | no | yes |
 | DECKY-INSTALL | Homebrew tree, PluginLoader binary, version, channel | filesystem | stat/read `$HOME/homebrew/services/PluginLoader`, `.loader.version`, settings `branch` | high if incomplete | low | no | no | yes |
 | DECKY-SERVICE | systemd unit exists/enabled/active/failed | systemd | `systemctl is-enabled/is-active/status plugin_loader.service` (no start/stop) | high | low | no | no (status often works) | yes |
-| DECKY-PORTS | 8080 and 1337 LISTEN + process name | sockets | `ss -ltnp` or `ss -ltn` + `/proc` | high on 8080 conflict | low | no | no (process name may be LIMITED) | yes |
+| DECKY-PORTS | 8080 and 1337 LISTEN + process name; 8081 CEF forward bound beyond localhost | sockets | `ss -ltnp` or `ss -ltn` + `/proc/<MainPID>/comm` when `ss` hides the name; warn if 8081 is not loopback | high on 8080 conflict; medium if 8081 is exposed | low | no | no (process name may be LIMITED) | yes |
 | DECKY-FRONTEND | CEF enable file, `/json` health, injection log signatures | fs + HTTP localhost + journal | read `.cef-enable-remote-debugging`; HTTP GET `127.0.0.1:8080/json`; journal snippets | high for port/CEF facts; medium for Steam Beta correlation | medium | no (localhost only) | no | yes |
 | DECKY-LOGS | Recent backend ERROR/CRITICAL/Traceback | journal | `journalctl -b0 -u plugin_loader.service` bounded | medium–high | medium (old errors) | no | maybe SKIPPED | yes |
 | PLUGIN-INVENTORY | Installed plugins name/version/dir | `plugin.json` / `package.json` | list `$HOME/homebrew/plugins` only | info | low | no | no | yes |
@@ -28,7 +28,7 @@ False-positive risk: `low | medium | high`.
 | NET-GITHUB | github.com reachable; API quota remaining | HTTP | `HEAD https://github.com`; `GET https://api.github.com/rate_limit` | high if remaining=0 | low | yes | no | yes |
 | NET-STORE | Plugin Store JSON reachable | HTTP | `GET https://plugins.deckbrew.xyz/plugins` | medium | low | yes | no | yes |
 | FP-BASIC | flatpak binary, remotes listable; custom remotes ≠ error | CLI | `flatpak --version`; `flatpak remotes` | medium–high if binary/remotes fail | low | no | no | yes |
-| FP-UPDATES | Updates available vs **check failed** | CLI | `flatpak remote-ls --updates` (`LANG=C`); non-zero ≠ 0 updates | medium | low | yes (remote fetch) | no | yes |
+| FP-UPDATES | Updates available vs **check failed** vs **one remote failed** | CLI | `flatpak remote-ls --updates`; if `-a` dies, probe remaining remotes one by one so Flathub updates are not hidden | medium | low | yes (remote fetch) | no | yes |
 | AUTOFLATPAKS | If plugin installed: remote-ls health + plugin logs | plugin dir + flatpak + logs | detect plugin; `flatpak remote-ls --columns=ref,origin -a`; read plugin log | medium–high | low | yes (same as remote-ls) | no | yes |
 
 ## Considered, not MVP (0.2+)
@@ -53,7 +53,7 @@ False-positive risk: `low | medium | high`.
 ## Notes for implementers
 
 - **SYS-OS-UPDATER:** if the check command times out or the daemon is dead, status is `FAIL` or `UNKNOWN`, never PASS “up to date”.
-- **DECKY-PORTS:** expected owner of 8080 is `steamwebhelper`; of 1337 is `PluginLoader`. Do not kill the occupant.
+- **DECKY-PORTS:** expected owner of 8080 is `steamwebhelper`; of 1337 is `PluginLoader`. A listen line **without** a process name is not a conflict (non-root `ss` hides root sockets). If `systemctl show` gives `MainPID`, `/proc/<pid>/comm` may fill the name when it looks like PluginLoader. `*:8081` is a WARNING (CEF debugger forwarded). Do not kill the occupant.
 - **DECKY-FRONTEND:** localhost HTTP is not “network” in the privacy sense; `--no-network` still allows it.
 - **AUTOFLATPAKS:** SKIPPED with INFO if the plugin directory is absent. Do not copy AutoFlatpaks’ regex parser.
 - **GitHub:** only `rate_limit` + `github.com` HEAD (+ optional latest-release redirect). No user credentials.

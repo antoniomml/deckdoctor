@@ -30,6 +30,14 @@ Shipped in 0.1: core types, MVP checks, human CLI + `--json` + `report`, pytest 
 
 Also in 0.3: Spanish findings (not just chrome), compact CLI, `--verbose`, `deckdoctor checks`, hostname `steamdeck` no longer redacted, updater “no update available” false positive fixed, SteamOS checks skip unless the OS is actually SteamOS.
 
+## 0.3.2 — Steam Deck false positives
+
+On a real Steam Deck the 0.3.1 binary reported six “serious” problems that were all tool bugs: SteamOS `/var` is a ~230 MB partition (Flatpak is offloaded to `/home`), `ss` hides PluginLoader’s name from a non-root user, and the PyInstaller build leaked bundled OpenSSL into `flatpak` plus an empty CA store into HTTPS.
+
+## 0.3.3 — Same Deck, remaining edges
+
+A broken Flatpak remote (expired GPG) must not hide Flathub updates or AutoFlatpaks’ real cause. SYS-DISK now includes Steam libraries and `/run/media/$USER` and still ignores AppImage fuse mounts. `steamos-select-branch -c` printing `rel` is stable; `package/beta` containing `steamdeck_stable` is not a Beta client. CEF forwarded on `*:8081` is a warning. Username `deck` is not redacted inside plugin directory names. Compact CLI shows a Deck snapshot: internal vs microSD free space and Steam games per library (Proton/runtimes excluded).
+
 ## 0.3.1 — Public landing
 
 English README aimed at Deck users, not developers. Compact CLI uses emoji marks and plain-language labels. Spanish remains available with `--lang es`.

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "deckdoctor"
-version = "0.3.1"
+version = "0.3.3"
 description = "Diagnostics and opt-in fixes for SteamOS, Decky Loader, plugins, and Flatpak"
 readme = "README.md"
 license = { text = "MIT" }

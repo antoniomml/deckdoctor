@@ -94,11 +94,49 @@ def skip_no_decky(ctx: DiagnosticContext, check_id: str, title: str, *, source: 
     )
 
 
+def format_bytes(num: int) -> str:
+    for unit, size in (("GB", 1024**3), ("MB", 1024**2), ("KB", 1024)):
+        if num >= size:
+            return f"{num / size:.1f} {unit}"
+    return f"{num} B"
+
+
 def first_line(text: str, limit: int = 240) -> str:
     line = (text or "").strip().splitlines()[0] if (text or "").strip() else ""
     if len(line) > limit:
         return line[: limit - 1] + "…"
     return line
+
+
+def flatpak_remote_from_stderr(stderr: str) -> str:
+    """Best-effort remote name from ``flatpak remote-ls`` errors."""
+    text = stderr or ""
+    for pattern in (
+        r"from remote\s+['\"]?([^:'\"\s]+)",
+        r"for remote\s+['\"]?([^:'\"\s]+)",
+        r"remote\s+['\"]([^'\"]+)['\"]",
+    ):
+        match = re.search(pattern, text, re.I)
+        if match:
+            return match.group(1)
+    return ""
+
+
+def parse_flatpak_remotes(text: str) -> list[tuple[str, str]]:
+    """Return ``(name, --system|--user)`` from ``flatpak remotes`` output."""
+    rows: list[tuple[str, str]] = []
+    for raw in (text or "").splitlines():
+        line = raw.strip()
+        if not line or line.lower().startswith("name"):
+            continue
+        bits = line.split("\t") if "\t" in line else line.split()
+        if not bits:
+            continue
+        name = bits[0]
+        options = bits[1] if len(bits) > 1 else ""
+        scope = "--user" if "user" in {p.strip() for p in options.split(",")} else "--system"
+        rows.append((name, scope))
+    return rows
 
 
 LOG_SIGNATURES = (

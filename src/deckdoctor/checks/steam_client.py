@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 
-from deckdoctor.checks._util import result
+from deckdoctor.checks._util import first_line, result
 from deckdoctor.context import DiagnosticContext
 from deckdoctor.models import CheckResult, EvidenceSource, Severity, Status
 
@@ -26,6 +26,21 @@ def _looks_beta(text: str) -> bool | None:
         return True
     if "clientbeta" in lowered or "wantbeta" in lowered:
         return True
+    return None
+
+
+def _channel_from_package_beta(text: str) -> str | None:
+    """``package/beta`` exists on stable Steam Deck clients; read the stream name."""
+    first = first_line(text).lower()
+    if not first:
+        return None
+    # Valve's Deck stable package stream is named steamdeck_stable or steamdeck_stablebeta.
+    if "stablebeta" in first:
+        return "stable"
+    if "beta" in first:
+        return "beta"
+    if "stable" in first or first in {"rel", "release", "public"}:
+        return "stable"
     return None
 
 
@@ -68,9 +83,12 @@ def run(ctx: DiagnosticContext) -> CheckResult:
         evidence.append(f"scanned {config}")
 
     beta_file = steam / "package" / "beta"
-    if ctx.exists(beta_file):
-        channel = "beta"
-        evidence.append(f"present {beta_file}")
+    beta_text = ctx.read_text(beta_file)
+    if beta_text is not None:
+        from_file = _channel_from_package_beta(beta_text)
+        evidence.append(f"package/beta: {first_line(beta_text) or '(empty)'}")
+        if from_file:
+            channel = from_file
 
     ctx.facts.steam_version = version
     ctx.facts.steam_channel = channel

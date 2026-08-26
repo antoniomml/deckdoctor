@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from deckdoctor.checks._util import version_is_newer
 from deckdoctor.command import CommandResult
 from deckdoctor.http import HttpResult
@@ -120,6 +122,18 @@ def test_frontend_missing_steam_beta(tmp_path: Path) -> None:
     assert any("Steam" in d.title or "frontend" in d.title.lower() for d in report.diagnoses)
 
 
+def test_steamdeck_stablebeta_package_file_is_stable(tmp_path: Path) -> None:
+    home = make_home(tmp_path)
+    (home / ".steam" / "steam" / "package" / "beta").write_text("steamdeck_stablebeta\n", encoding="utf-8")
+    ctx = make_ctx(tmp_path, home=home)
+    report = diagnose(ctx)
+    steam = next(r for r in report.results if r.check_id == "STEAM-CLIENT")
+    front = next(r for r in report.results if r.check_id == "DECKY-FRONTEND")
+    assert steam.extra.get("channel") == "stable"
+    assert front.status == Status.PASS
+    assert not any("Steam" in d.title and "frontend" in d.title.lower() for d in report.diagnoses)
+
+
 def test_github_rate_limited(tmp_path: Path) -> None:
     http = healthy_http()
     http.add(
@@ -156,8 +170,58 @@ def test_flatpak_broken_remote(tmp_path: Path) -> None:
     auto = next(r for r in report.results if r.check_id == "AUTOFLATPAKS")
     assert updates.status == Status.FAIL
     assert "0 update" not in updates.finding.lower()
+    assert "kdeapps" in updates.finding.lower()
     assert auto.status == Status.FAIL
+    assert "kdeapps" in auto.finding.lower()
     assert any("AutoFlatpaks" in d.title for d in report.diagnoses)
+    assert any("kdeapps" in d.recommendation for d in report.diagnoses)
+
+
+def test_flatpak_lists_updates_when_one_remote_is_broken(tmp_path: Path) -> None:
+    home = make_home(tmp_path)
+    write_plugin(home, "decky-autoflatpaks", "AutoFlatpaks", "1.6.8")
+    commands = healthy_commands()
+    remotes_key = ("flatpak", "remotes", "--columns=name,options,url")
+    commands[remotes_key] = CommandResult(
+        remotes_key,
+        0,
+        "flathub\tsystem\thttps://dl.flathub.org/repo/\n"
+        "onepassword-origin\tuser\thttps://downloads.1password.com/linux/flatpak/1Password.flatpakrepo\n",
+        "",
+    )
+    listing_key = ("flatpak", "remote-ls", "--columns=ref,origin", "-a")
+    commands[listing_key] = CommandResult(
+        listing_key,
+        1,
+        "",
+        "error: Unable to load summary from remote onepassword-origin: GPG signatures found, but none are in trusted keyring\n",
+    )
+    flathub_key = (
+        "flatpak",
+        "remote-ls",
+        "--system",
+        "flathub",
+        "--updates",
+        "--columns=application,branch,origin",
+    )
+    commands[flathub_key] = CommandResult(
+        flathub_key,
+        0,
+        "com.google.Chrome\tstable\tflathub\n",
+        "",
+    )
+    ctx = make_ctx(tmp_path, home=home, commands=commands)
+    report = diagnose(ctx)
+    updates = next(r for r in report.results if r.check_id == "FP-UPDATES")
+    auto = next(r for r in report.results if r.check_id == "AUTOFLATPAKS")
+    assert updates.status == Status.WARNING
+    assert "chrome" in " ".join(updates.evidence).lower() or "1" in updates.finding
+    assert "onepassword" in updates.finding.lower()
+    assert auto.status == Status.FAIL
+    assert "onepassword" in auto.finding.lower()
+    from deckdoctor.fixes import collect_plans
+
+    assert any(p.id == "flatpak-update" for p in collect_plans(ctx, report))
 
 
 def test_plugin_remote_binary_failure(tmp_path: Path) -> None:
@@ -185,6 +249,74 @@ def test_low_disk_space(tmp_path: Path) -> None:
     disk = next(r for r in report.results if r.check_id == "SYS-DISK")
     assert disk.status == Status.FAIL
     assert "free" in disk.finding.lower()
+
+
+def test_steamos_tiny_var_with_home_space_is_ok(tmp_path: Path) -> None:
+    import shutil
+
+    from tests.conftest import plenty_disk
+
+    def steamos_layout(path: Path) -> shutil._ntuple_diskusage:
+        if Path(path).as_posix() == "/var":
+            return shutil._ntuple_diskusage(230 * 1024**2, 55 * 1024**2, 175 * 1024**2)
+        return plenty_disk(path)
+
+    ctx = make_ctx(tmp_path, disk=steamos_layout)
+    report = diagnose(ctx)
+    disk = next(r for r in report.results if r.check_id == "SYS-DISK")
+    assert disk.status == Status.PASS
+    assert any("/var:" in line for line in disk.evidence)
+
+
+def test_tiny_var_actually_full_still_fails(tmp_path: Path) -> None:
+    import shutil
+
+    from tests.conftest import plenty_disk
+
+    def full_var(path: Path) -> shutil._ntuple_diskusage:
+        if Path(path).as_posix() == "/var":
+            return shutil._ntuple_diskusage(230 * 1024**2, 220 * 1024**2, 10 * 1024**2)
+        return plenty_disk(path)
+
+    ctx = make_ctx(tmp_path, disk=full_var)
+    report = diagnose(ctx)
+    disk = next(r for r in report.results if r.check_id == "SYS-DISK")
+    assert disk.status == Status.FAIL
+    assert "/var" in disk.finding
+
+
+def test_ss_without_process_name_is_not_a_conflict(tmp_path: Path) -> None:
+    commands = healthy_commands()
+    commands[("ss", "-ltnp")] = CommandResult(
+        ("ss", "-ltnp"),
+        0,
+        "LISTEN 0      10         127.0.0.1:8080       0.0.0.0:*    users:((\"steamwebhelper\",pid=4471,fd=97))\n"
+        "LISTEN 0      128        127.0.0.1:1337       0.0.0.0:*                                             \n",
+        "",
+    )
+    ctx = make_ctx(tmp_path, commands=commands)
+    report = diagnose(ctx)
+    ports = next(r for r in report.results if r.check_id == "DECKY-PORTS")
+    assert ports.status == Status.PASS
+    assert "LISTEN" not in ports.finding
+    assert "<PRIVATE_IP" not in ports.finding
+
+
+def test_ss_named_stranger_on_1337_is_a_conflict(tmp_path: Path) -> None:
+    commands = healthy_commands()
+    commands[("ss", "-ltnp")] = CommandResult(
+        ("ss", "-ltnp"),
+        0,
+        'LISTEN 0 10 127.0.0.1:8080 0.0.0.0:* users:(("steamwebhelper",pid=10,fd=8))\n'
+        'LISTEN 0 128 127.0.0.1:1337 0.0.0.0:* users:(("syncthing",pid=9,fd=3))\n',
+        "",
+    )
+    ctx = make_ctx(tmp_path, commands=commands)
+    report = diagnose(ctx)
+    ports = next(r for r in report.results if r.check_id == "DECKY-PORTS")
+    assert ports.status == Status.FAIL
+    assert "syncthing" in ports.finding.lower()
+    assert ports.explanation != ports.finding
 
 
 def test_updater_timeout_is_not_up_to_date(tmp_path: Path) -> None:
@@ -401,3 +533,129 @@ def test_version_is_newer_is_conservative() -> None:
     assert version_is_newer("2.0.0", "2.0.0") is False
     assert version_is_newer("v3.2.6", "3.2.5") is True
     assert version_is_newer("1.0", "unknown") is None
+
+
+def test_steamdeck_stable_package_file_is_stable(tmp_path: Path) -> None:
+    home = make_home(tmp_path)
+    (home / ".steam" / "steam" / "package" / "beta").write_text("steamdeck_stable\n", encoding="utf-8")
+    ctx = make_ctx(tmp_path, home=home)
+    report = diagnose(ctx)
+    steam = next(r for r in report.results if r.check_id == "STEAM-CLIENT")
+    assert steam.extra.get("channel") == "stable"
+
+
+def test_steamos_rel_channel_is_labelled_stable(tmp_path: Path) -> None:
+    commands = healthy_commands()
+    commands[("steamos-select-branch", "-c")] = CommandResult(
+        ("steamos-select-branch", "-c"), 0, "rel\n", ""
+    )
+    ctx = make_ctx(tmp_path, commands=commands)
+    report = diagnose(ctx)
+    channel = next(r for r in report.results if r.check_id == "SYS-OS-CHANNEL")
+    assert channel.status == Status.PASS
+    assert "stable" in channel.finding.lower()
+    assert ctx.facts.os_channel == "rel"
+
+
+def test_cef_forward_on_wildcard_is_a_warning(tmp_path: Path) -> None:
+    commands = healthy_commands()
+    commands[("ss", "-ltnp")] = CommandResult(
+        ("ss", "-ltnp"),
+        0,
+        "LISTEN 0 10 127.0.0.1:8080 0.0.0.0:* users:((\"steamwebhelper\",pid=10,fd=8))\n"
+        "LISTEN 0 128 127.0.0.1:1337 0.0.0.0:* users:((\"PluginLoader\",pid=11,fd=3))\n"
+        "LISTEN 0 128 *:8081 *:*\n",
+        "",
+    )
+    ctx = make_ctx(tmp_path, commands=commands)
+    report = diagnose(ctx)
+    ports = next(r for r in report.results if r.check_id == "DECKY-PORTS")
+    assert ports.status == Status.WARNING
+    assert "8081" in ports.finding or "CEF" in ports.finding or "forward" in ports.finding.lower()
+
+
+def test_disk_includes_steam_library_and_skips_appimage_fuse(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import shutil
+
+    from deckdoctor.checks import sys_disk
+    from tests.conftest import plenty_disk
+
+    home = make_home(tmp_path)
+    library = tmp_path / "sdcard"
+    library.mkdir()
+    fuse = tmp_path / ".mount_Cursorabc"
+    fuse.mkdir()
+    steamapps = home / ".steam" / "steam" / "steamapps"
+    steamapps.mkdir(parents=True)
+    (steamapps / "libraryfolders.vdf").write_text(
+        f'"libraryfolders"\n{{\n\t"0"\n\t{{\n\t\t"path"\t\t"{library}"\n\t}}\n'
+        f'\t"1"\n\t{{\n\t\t"path"\t\t"{fuse}"\n\t}}\n}}\n',
+        encoding="utf-8",
+    )
+
+    def mixed(path: Path) -> shutil._ntuple_diskusage:
+        if path == library:
+            return shutil._ntuple_diskusage(64 * 1024**3, 10 * 1024**3, 54 * 1024**3)
+        return plenty_disk(path)
+
+    monkeypatch.setattr(sys_disk, "_device_id", lambda path: hash(str(path)))
+    ctx = make_ctx(tmp_path, home=home, disk=mixed)
+    report = diagnose(ctx)
+    disk = next(r for r in report.results if r.check_id == "SYS-DISK")
+    blob = " ".join(disk.evidence)
+    assert str(library) in blob
+    assert ".mount_Cursor" not in blob
+
+
+def _write_acf(steamapps: Path, appid: str, name: str) -> None:
+    steamapps.mkdir(parents=True, exist_ok=True)
+    (steamapps / f"appmanifest_{appid}.acf").write_text(
+        f'"AppState"\n{{\n\t"appid"\t\t"{appid}"\n\t"name"\t\t"{name}"\n}}\n',
+        encoding="utf-8",
+    )
+
+
+def test_snapshot_counts_games_and_splits_internal_vs_sd(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import shutil
+
+    from deckdoctor.checks import sys_disk
+    from deckdoctor.renderer import render_cli
+    from tests.conftest import plenty_disk
+
+    home = make_home(tmp_path)
+    internal = home / ".steam" / "steam"
+    sd = tmp_path / "mmcblk0p1"
+    _write_acf(internal / "steamapps", "123", "Cuphead")
+    _write_acf(internal / "steamapps", "456", "Balatro")
+    _write_acf(internal / "steamapps", "1887720", "Proton Experimental")
+    _write_acf(sd / "steamapps", "789", "DREDGE")
+    _write_acf(sd / "steamapps", "1011", "Stardew Valley")
+    (internal / "steamapps" / "libraryfolders.vdf").write_text(
+        f'"libraryfolders"\n{{\n\t"0"\n\t{{\n\t\t"path"\t\t"{internal}"\n\t}}\n'
+        f'\t"1"\n\t{{\n\t\t"path"\t\t"{sd}"\n\t}}\n}}\n',
+        encoding="utf-8",
+    )
+
+    def mixed(path: Path) -> shutil._ntuple_diskusage:
+        if path == sd:
+            return shutil._ntuple_diskusage(469 * 1024**3, 150 * 1024**3, 319 * 1024**3)
+        return plenty_disk(path)
+
+    monkeypatch.setattr(sys_disk, "_device_id", lambda path: hash(str(path)))
+    ctx = make_ctx(tmp_path, home=home, disk=mixed, locale="es")
+    report = diagnose(ctx)
+    assert ctx.facts.steam_game_count == 4
+    assert ctx.facts.steam_games_internal == 2
+    assert ctx.facts.steam_games_sd == 2
+    assert ctx.facts.storage_sd is not None
+    text = render_cli(report)
+    assert "Interno" in text
+    assert "microSD" in text
+    assert "no insertada" not in text
+    assert "4 juegos" in text
+    assert "2 en interno" in text
+    assert "2 en microSD" in text

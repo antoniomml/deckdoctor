@@ -44,6 +44,17 @@ def test_autoflatpaks_remote() -> None:
     assert any("AutoFlatpaks" in d.title for d in diags)
 
 
+def test_autoflatpaks_remote_names_the_remote() -> None:
+    facts = Facts(
+        autoflatpaks_installed=True,
+        autoflatpaks_remote_list_failed=True,
+        flatpak_failed_remotes=["onepassword-origin"],
+    )
+    diags = correlate([], facts)
+    rec = " ".join(d.recommendation for d in diags)
+    assert "onepassword-origin" in rec
+
+
 def test_steam_beta_likely() -> None:
     facts = Facts(
         plugin_loader_present=True,

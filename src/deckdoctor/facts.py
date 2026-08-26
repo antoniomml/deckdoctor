@@ -28,6 +28,11 @@ class Facts:
     os_updater: str | None = None
     disk: list[dict[str, Any]] = field(default_factory=list)
     disk_min_free: int | None = None
+    storage_internal: dict[str, Any] | None = None
+    storage_sd: dict[str, Any] | None = None
+    steam_game_count: int | None = None
+    steam_games_internal: int | None = None
+    steam_games_sd: int | None = None
     ntp_synchronized: bool | None = None
     steam_version: str | None = None
     steam_channel: str | None = None
@@ -45,6 +50,7 @@ class Facts:
     decky_service_active: str | None = None
     decky_service_enabled: str | None = None
     decky_service_result: str | None = None
+    decky_service_pid: int | None = None
     port_8080: list[str] = field(default_factory=list)
     port_1337: list[str] = field(default_factory=list)
     port_8080_conflict: bool = False
@@ -67,6 +73,7 @@ class Facts:
     flatpak_remote_count: int | None = None
     flatpak_update_check: str | None = None
     flatpak_updates: list[str] = field(default_factory=list)
+    flatpak_failed_remotes: list[str] = field(default_factory=list)
     flatpak_eol: list[str] = field(default_factory=list)
     autoflatpaks_installed: bool | None = None
     autoflatpaks_remote_list_failed: bool = False

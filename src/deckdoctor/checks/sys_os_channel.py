@@ -7,6 +7,18 @@ from deckdoctor.models import CheckResult, EvidenceSource, Status
 ID = "SYS-OS-CHANNEL"
 TITLE = "SteamOS channel"
 
+# steamos-select-branch -c prints short tokens, not the UI labels.
+_CHANNEL_LABELS = {
+    "rel": "stable (rel)",
+    "rc": "release candidate (rc)",
+    "beta": "beta",
+    "bc": "beta candidate (bc)",
+    "preview": "preview",
+    "pc": "preview candidate (pc)",
+    "main": "main",
+    "stable": "stable",
+}
+
 
 def run(ctx: DiagnosticContext) -> CheckResult:
     title = ctx.tr(f"title.{ID}")
@@ -31,15 +43,16 @@ def run(ctx: DiagnosticContext) -> CheckResult:
         if proc.ok and text:
             channel = first_line(text, 80)
             ctx.facts.os_channel = channel
+            label = _CHANNEL_LABELS.get(channel.lower(), channel)
             return result(
                 ID,
                 title,
                 Status.PASS,
-                ctx.tr("sys.channel.ok", channel=channel),
+                ctx.tr("sys.channel.ok", channel=label),
                 explanation=ctx.tr("sys.channel.ok.explain"),
                 evidence=[f"{' '.join(argv)} → {channel}"],
                 source=EvidenceSource.OS_METADATA,
-                extra={"channel": channel},
+                extra={"channel": channel, "label": label},
             )
         if text:
             return result(

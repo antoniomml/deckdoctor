@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from deckdoctor.checks._util import result
+from deckdoctor.checks._util import flatpak_remote_from_stderr, result
 from deckdoctor.context import DiagnosticContext
 from deckdoctor.models import CheckResult, EvidenceSource, Status
 
@@ -77,6 +77,21 @@ def run(ctx: DiagnosticContext) -> CheckResult:
             source=EvidenceSource.FLATPAK,
         )
 
+    if ctx.facts.flatpak_failed_remotes:
+        remote = ", ".join(ctx.facts.flatpak_failed_remotes)
+        ctx.facts.autoflatpaks_remote_list_failed = True
+        return result(
+            ID,
+            title,
+            Status.FAIL,
+            ctx.tr("auto.remote_fail.named", remote=remote),
+            explanation=ctx.tr("auto.remote_fail.explain"),
+            recommendation=ctx.tr("auto.remote_fail.named.rec", remote=remote),
+            evidence=evidence + [f"failed remotes from FP-UPDATES: {remote}"],
+            source=EvidenceSource.FLATPAK,
+            extra={"remote_hint": remote, "log_fail": log_fail},
+        )
+
     listing = ctx.probe_flatpak_listing()
     evidence.append(f"flatpak remote-ls -a exit {listing.exit_code}")
     if listing.stderr.strip():
@@ -98,21 +113,17 @@ def run(ctx: DiagnosticContext) -> CheckResult:
     stderr_l = listing.stderr.lower()
     broken = any(tok in stderr_l for tok in ("error", "not found", "invalid", "couldn't", "no such", "failed"))
     if not listing.ok or broken:
-        remote_hint = ""
-        for token in listing.stderr.replace(",", " ").split():
-            if token.lower() in {"kdeapps", "flathub", "fedora", "gnome-nightly"} or (
-                "." in token and "/" not in token
-            ):
-                remote_hint = token
-                break
+        remote_hint = flatpak_remote_from_stderr(listing.stderr)
         ctx.facts.autoflatpaks_remote_list_failed = True
+        finding = ctx.tr("auto.remote_fail.named", remote=remote_hint) if remote_hint else ctx.tr("auto.remote_fail")
+        rec = ctx.tr("auto.remote_fail.named.rec", remote=remote_hint) if remote_hint else ctx.tr("auto.remote_fail.rec")
         return result(
             ID,
             title,
             Status.FAIL,
-            ctx.tr("auto.remote_fail"),
+            finding,
             explanation=ctx.tr("auto.remote_fail.explain"),
-            recommendation=ctx.tr("auto.remote_fail.rec"),
+            recommendation=rec,
             evidence=evidence,
             source=EvidenceSource.FLATPAK,
             extra={"remote_hint": remote_hint, "log_fail": log_fail},

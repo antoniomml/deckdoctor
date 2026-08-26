@@ -43,6 +43,17 @@ def test_ascii_marks(tmp_path: Path) -> None:
     assert "OK" in text
 
 
+def test_compact_snapshot_shows_storage(tmp_path: Path) -> None:
+    ctx = make_ctx(tmp_path, locale="es")
+    report = diagnose(ctx)
+    text = render_cli(report)
+    assert "Interno" in text
+    assert "libres de" in text
+    assert "microSD" in text
+    assert "no insertada" in text
+    assert "juego" in text.lower()
+
+
 def test_compact_uses_titles_and_emoji(tmp_path: Path) -> None:
     commands = healthy_commands()
     commands[("systemctl", "is-active", "plugin_loader.service")] = CommandResult(
@@ -124,3 +135,9 @@ def test_internal_error_is_exit_2(monkeypatch: pytest.MonkeyPatch) -> None:
 
     monkeypatch.setattr("deckdoctor.cli.diagnose", boom)
     assert main(["--no-network"]) == 2
+
+
+def test_translation_tables_have_matching_keys() -> None:
+    from deckdoctor.i18n import MESSAGES
+
+    assert set(MESSAGES["en"]) == set(MESSAGES["es"])

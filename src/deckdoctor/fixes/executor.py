@@ -1,11 +1,10 @@
 from __future__ import annotations
 
-import os
 import subprocess
 from collections.abc import Sequence
 from pathlib import Path
 
-from deckdoctor.command import CommandResult
+from deckdoctor.command import CommandResult, child_env
 from deckdoctor.context import DiagnosticContext
 
 _ALLOWED_SYSTEMCTL = {
@@ -50,9 +49,7 @@ class FixExecutor:
     def run(self, argv: Sequence[str], *, timeout: float = 60.0) -> CommandResult:
         argv_t = _argv_t(argv)
         self._assert_allowed(argv_t)
-        env = os.environ.copy()
-        env["LANG"] = "C"
-        env["LC_ALL"] = "C"
+        env = child_env()
         try:
             completed = subprocess.run(
                 list(argv_t),

@@ -12,7 +12,7 @@ _MAC = re.compile(r"\b([0-9A-F]{2}:){5}[0-9A-F]{2}\b", re.I)
 _STEAM_ID = re.compile(r"\b7656119\d{10}\b")
 _IPV4 = re.compile(r"\b(\d{1,3}\.){3}\d{1,3}\b")
 _IPV6 = re.compile(
-    r"\b(?:[0-9a-fA-F]{1,4}:){2,7}[0-9a-fA-F]{1,4}\b|\b::1\b",
+    r"\b(?:[0-9a-fA-F]{1,4}:){2,7}[0-9a-fA-F]{1,4}\b|(?<![:0-9a-fA-F])::1\b",
 )
 _JWT = re.compile(r"\beyJ[A-Za-z0-9_\-]+=*\.[A-Za-z0-9_\-]+=*\.[A-Za-z0-9_\-+=]*")
 _BEARER = re.compile(r"(?i)(bearer\s+)[A-Za-z0-9._\-+=/]+")
@@ -41,6 +41,8 @@ _GENERIC_HOSTNAMES = frozenset(
         "deck",
     }
 )
+# SteamOS default user; replacing it mangles plugin dirs like hltb-for-deck.
+_GENERIC_USERS = frozenset({"deck", "user", "linux"})
 
 
 def _is_private_ipv4(ip: str) -> bool:
@@ -48,7 +50,10 @@ def _is_private_ipv4(ip: str) -> bool:
         addr = ipaddress.IPv4Address(ip)
     except ValueError:
         return False
-    return bool(addr.is_private or addr.is_loopback or addr.is_link_local)
+    # Loopback / 0.0.0.0 are not identifying; Python 3.13 also marks them is_private.
+    if addr.is_loopback or addr.is_unspecified:
+        return False
+    return bool(addr.is_private or addr.is_link_local)
 
 
 def _is_private_ipv6(ip: str) -> bool:
@@ -56,7 +61,9 @@ def _is_private_ipv6(ip: str) -> bool:
         addr = ipaddress.IPv6Address(ip)
     except ValueError:
         return False
-    return bool(addr.is_private or addr.is_loopback or addr.is_link_local)
+    if addr.is_loopback or addr.is_unspecified:
+        return False
+    return bool(addr.is_private or addr.is_link_local)
 
 
 @dataclass
@@ -102,7 +109,11 @@ class Sanitizer:
 
         if self.home:
             out = out.replace(self.home, "/home/<USER>")
-        if self.user and len(self.user) >= _MIN_TOKEN_LEN:
+        if (
+            self.user
+            and len(self.user) >= _MIN_TOKEN_LEN
+            and self.user.lower() not in _GENERIC_USERS
+        ):
             out = re.sub(rf"(?<![A-Za-z0-9_]){re.escape(self.user)}(?![A-Za-z0-9_])", "<USER>", out)
         host = (self.hostname or "").strip()
         if host and len(host) >= _MIN_TOKEN_LEN and host.lower() not in _GENERIC_HOSTNAMES:

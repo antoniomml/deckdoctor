@@ -62,6 +62,12 @@ _EN: dict[str, str] = {
     "ui.severity.none": "",
     "ui.confidence.high": "high confidence",
     "ui.confidence.medium": "medium confidence",
+    "ui.snapshot.internal": "Internal  {free} free of {total}",
+    "ui.snapshot.sd": "microSD   {free} free of {total}",
+    "ui.snapshot.sd.missing": "microSD   not inserted",
+    "ui.snapshot.games.split": "{total} games  ·  {internal} internal  ·  {sd} microSD",
+    "ui.snapshot.games.internal_only": "{total} games (internal)",
+    "ui.snapshot.games.none": "No Steam games found",
     "fix.header": "Fix plan",
     "fix.empty": "Nothing safe to change automatically.",
     "fix.empty.detail": (
@@ -184,6 +190,9 @@ _EN: dict[str, str] = {
         "The plugin cannot display a remote package list because Flatpak cannot produce one."
     ),
     "diag.autoflatpaks.rec": "Fix or remove the failing Flatpak remote yourself. DeckDoctor will not delete remotes.",
+    "diag.autoflatpaks.rec.named": (
+        "Fix or remove the '{remote}' Flatpak remote yourself. DeckDoctor will not delete remotes."
+    ),
     "diag.overlay.title": "User-overlaid atomupd/rauc config and updater failure",
     "diag.overlay.summary": (
         "FACT: client.conf and/or rauc/system.conf exist under the SteamOS /etc overlay. "
@@ -251,6 +260,12 @@ _ES: dict[str, str] = {
     "ui.severity.none": "",
     "ui.confidence.high": "confianza alta",
     "ui.confidence.medium": "confianza media",
+    "ui.snapshot.internal": "Interno   {free} libres de {total}",
+    "ui.snapshot.sd": "microSD   {free} libres de {total}",
+    "ui.snapshot.sd.missing": "microSD   no insertada",
+    "ui.snapshot.games.split": "{total} juegos  ·  {internal} en interno  ·  {sd} en microSD",
+    "ui.snapshot.games.internal_only": "{total} juegos (interno)",
+    "ui.snapshot.games.none": "Ningún juego de Steam encontrado",
     "fix.header": "Plan de arreglo",
     "fix.empty": "Nada que cambiar de forma segura y automática.",
     "fix.empty.detail": (
@@ -373,6 +388,9 @@ _ES: dict[str, str] = {
         "El plugin no puede mostrar el listado remoto porque Flatpak no puede generarlo."
     ),
     "diag.autoflatpaks.rec": "Repara o elimina tú el remoto Flatpak que falla. DeckDoctor no borra remotos.",
+    "diag.autoflatpaks.rec.named": (
+        "Repara o elimina tú el remoto Flatpak '{remote}'. DeckDoctor no borra remotos."
+    ),
     "diag.overlay.title": "Config atomupd/rauc en overlay y fallo del actualizador",
     "diag.overlay.summary": (
         "HECHO: client.conf y/o rauc/system.conf existen en el overlay /etc de SteamOS. "

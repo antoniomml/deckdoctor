@@ -25,7 +25,7 @@ def run(ctx: DiagnosticContext) -> CheckResult:
             "show",
             UNIT,
             "-p",
-            "LoadState,ActiveState,SubState,Result,ExecMainStatus,NRestarts,UnitFileState,InactiveExitTimestamp,ExecMainCode",
+            "LoadState,ActiveState,SubState,Result,ExecMainStatus,NRestarts,UnitFileState,InactiveExitTimestamp,ExecMainCode,MainPID",
         ]
     )
 
@@ -57,6 +57,9 @@ def run(ctx: DiagnosticContext) -> CheckResult:
     ctx.facts.decky_service_active = active_s
     ctx.facts.decky_service_enabled = enabled_s
     ctx.facts.decky_service_result = result_state
+    pid_raw = props.get("MainPID", "")
+    if pid_raw.isdigit() and int(pid_raw) > 0:
+        ctx.facts.decky_service_pid = int(pid_raw)
 
     if "not-found" in enabled_s or load_state == "not-found":
         return result(

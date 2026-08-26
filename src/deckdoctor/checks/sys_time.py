@@ -83,7 +83,7 @@ def run(ctx: DiagnosticContext) -> CheckResult:
         ID,
         title,
         Status.PASS,
-        ctx.tr("sys.time.ok"),
+        ctx.tr("sys.time.ok.ntp") if synced.lower() == "yes" else ctx.tr("sys.time.ok"),
         evidence=evidence,
         source=EvidenceSource.OS_METADATA,
         extra={"NTPSynchronized": synced},

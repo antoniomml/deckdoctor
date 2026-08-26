@@ -99,11 +99,17 @@ def correlate(results: list[CheckResult], facts: Facts, locale: str = "en") -> l
         )
 
     if facts.autoflatpaks_installed and facts.autoflatpaks_remote_list_failed:
+        remotes = ", ".join(facts.flatpak_failed_remotes)
+        rec = (
+            translate(locale, "diag.autoflatpaks.rec.named", remote=remotes)
+            if remotes
+            else t("diag.autoflatpaks.rec")
+        )
         found.append(
             Diagnosis(
                 title=t("diag.autoflatpaks.title"),
                 summary=t("diag.autoflatpaks.summary"),
-                recommendation=t("diag.autoflatpaks.rec"),
+                recommendation=rec,
                 related_checks=["AUTOFLATPAKS", "FP-BASIC", "FP-UPDATES"],
                 confidence=Confidence.HIGH,
                 fact_kind="fact",

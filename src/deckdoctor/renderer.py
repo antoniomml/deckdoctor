@@ -4,6 +4,7 @@ import os
 import sys
 
 from deckdoctor.checks import ALL_CHECKS
+from deckdoctor.checks._util import format_bytes
 from deckdoctor.i18n import translate
 from deckdoctor.models import FixPlan, FixResult, Report, Severity, Status
 
@@ -89,6 +90,54 @@ def _headline(report: Report) -> str:
     if decky and decky.status == Status.PASS:
         bits.append(decky.finding)
     return " · ".join(bits)
+
+
+def _snapshot_lines(report: Report) -> list[str]:
+    facts = report.facts
+    if facts.get("storage_internal") is None and facts.get("steam_game_count") is None:
+        return []
+    locale = report.locale
+    indent = "    " if not report.ascii_mode else ""
+    lines: list[str] = []
+    internal = facts.get("storage_internal")
+    if isinstance(internal, dict) and internal.get("total"):
+        lines.append(
+            indent
+            + translate(
+                locale,
+                "ui.snapshot.internal",
+                free=format_bytes(int(internal["free"])),
+                total=format_bytes(int(internal["total"])),
+            )
+        )
+    sd = facts.get("storage_sd")
+    if isinstance(sd, dict) and sd.get("total"):
+        lines.append(
+            indent
+            + translate(
+                locale,
+                "ui.snapshot.sd",
+                free=format_bytes(int(sd["free"])),
+                total=format_bytes(int(sd["total"])),
+            )
+        )
+    elif facts.get("is_steamos"):
+        lines.append(indent + translate(locale, "ui.snapshot.sd.missing"))
+    games = facts.get("steam_game_count")
+    if games is None:
+        return lines
+    gi = int(facts.get("steam_games_internal") or 0)
+    gs = int(facts.get("steam_games_sd") or 0)
+    if int(games) == 0:
+        lines.append(indent + translate(locale, "ui.snapshot.games.none"))
+    elif sd:
+        lines.append(
+            indent
+            + translate(locale, "ui.snapshot.games.split", total=games, internal=gi, sd=gs)
+        )
+    else:
+        lines.append(indent + translate(locale, "ui.snapshot.games.internal_only", total=games))
+    return lines
 
 
 def render_cli(report: Report, *, plans: list[FixPlan] | None = None) -> str:
@@ -201,7 +250,7 @@ def _problem_block(report: Report, *, show_ids: bool) -> list[str]:
         head = _paint(f"  {mark}  {label}", tone + _BOLD if color else "", on=color)
         lines.append(f"{head}  ·  {sev}" if sev else head)
         lines.append(f"      {item.finding}")
-        if item.explanation and not show_ids:
+        if item.explanation and item.explanation != item.finding and not show_ids:
             lines.append(_paint(f"      {item.explanation}", _DIM, on=color))
         if item.recommendation:
             lines.append(f"      → {item.recommendation}")
@@ -216,6 +265,7 @@ def _render_compact(report: Report, *, plans: list[FixPlan] | None) -> str:
     headline = _headline(report)
     if headline:
         lines.append(_paint(f"    {headline}" if not report.ascii_mode else headline, _DIM, on=color))
+    lines.extend(_snapshot_lines(report))
     lines.append("")
 
     problems = report.problems
@@ -252,6 +302,7 @@ def _render_verbose(report: Report, *, plans: list[FixPlan] | None) -> str:
     headline = _headline(report)
     if headline:
         lines.append(_paint(f"    {headline}" if not report.ascii_mode else headline, _DIM, on=color))
+    lines.extend(_snapshot_lines(report))
     lines.append("")
     by = {r.check_id: r for r in report.results}
     tones = {

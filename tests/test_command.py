@@ -59,12 +59,28 @@ def test_zero_timeout_does_not_spawn() -> None:
     assert res.error == "timeout"
 
 
-def test_fake_runner_records_calls() -> None:
-    fake = FakeCommandRunner(
+def test_child_env_restores_original_library_path() -> None:
+    from deckdoctor.command import child_env
+
+    env = child_env(
         {
-            ("echo", "ok"): CommandResult(("echo", "ok"), 0, "ok\n", ""),
+            "PATH": "/usr/bin",
+            "LD_LIBRARY_PATH": "/tmp/_MEIabc/lib",
+            "LD_LIBRARY_PATH_ORIG": "/usr/lib",
         }
     )
-    res = fake.run(["echo", "ok"])
-    assert res.ok
-    assert fake.calls == [("echo", "ok")]
+    assert env["LD_LIBRARY_PATH"] == "/usr/lib"
+    assert env["LANG"] == "C"
+    assert env["LC_ALL"] == "C"
+
+
+def test_child_env_drops_pyinstaller_extract_dir() -> None:
+    from deckdoctor.command import child_env
+
+    env = child_env(
+        {
+            "PATH": "/usr/bin",
+            "LD_LIBRARY_PATH": "/tmp/_MEI000031f0ElqbDs",
+        }
+    )
+    assert "LD_LIBRARY_PATH" not in env

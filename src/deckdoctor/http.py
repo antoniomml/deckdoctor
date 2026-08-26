@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import ssl
 import urllib.error
 import urllib.request
@@ -9,6 +10,41 @@ from typing import Any
 from urllib.parse import urlparse
 
 from deckdoctor import __version__
+
+_CA_FILES = (
+    "/etc/ssl/certs/ca-certificates.crt",
+    "/etc/pki/tls/certs/ca-bundle.crt",
+    "/etc/ssl/cert.pem",
+)
+
+
+def system_ca_file() -> str | None:
+    """OS trust store. Frozen binaries often ship an empty or stale CA bundle."""
+    extra = os.environ.get("SSL_CERT_FILE") or os.environ.get("REQUESTS_CA_BUNDLE")
+    env_ok = extra and "/_MEI" not in extra.replace("\\", "/")
+    ordered = ((extra,) if env_ok else ()) + _CA_FILES
+    for path in ordered:
+        if path and os.path.isfile(path):
+            return path
+    return None
+
+
+def ssl_context() -> ssl.SSLContext:
+    context = ssl.create_default_context()
+    cafile = system_ca_file()
+    if cafile:
+        try:
+            context.load_verify_locations(cafile=cafile)
+        except OSError:
+            pass
+    capath = "/etc/ssl/certs"
+    if os.path.isdir(capath):
+        try:
+            context.load_verify_locations(capath=capath)
+        except OSError:
+            pass
+    return context
+
 
 ALLOWED_HOSTS = frozenset(
     {
@@ -78,7 +114,7 @@ class HttpClient:
         req = urllib.request.Request(url, method=method.upper())
         req.add_header("User-Agent", self.user_agent)
         req.add_header("Accept", "*/*")
-        context = ssl.create_default_context()
+        context = ssl_context()
         handlers: list[urllib.request.BaseHandler] = [
             urllib.request.HTTPSHandler(context=context),
             urllib.request.HTTPHandler(),

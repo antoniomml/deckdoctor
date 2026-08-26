@@ -1,6 +1,16 @@
 from __future__ import annotations
 
-from deckdoctor.http import FakeHttpClient, HttpClient, host_allowed
+import os
+
+from deckdoctor.http import FakeHttpClient, HttpClient, host_allowed, ssl_context, system_ca_file
+
+
+def test_ssl_context_builds() -> None:
+    ctx = ssl_context()
+    assert ctx is not None
+    ca = system_ca_file()
+    if ca:
+        assert os.path.isfile(ca)
 
 
 def test_host_allowlist() -> None:

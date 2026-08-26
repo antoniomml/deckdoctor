@@ -24,12 +24,14 @@ def run(ctx: DiagnosticContext) -> CheckResult:
         )
     if not version.ok:
         ctx.facts.flatpak_available = False
+        detail = first_line(version.stderr) or first_line(version.stdout)
         return result(
             ID,
             title,
             Status.FAIL,
             ctx.tr("fp.basic.version_fail"),
-            evidence=[version.stderr.strip() or version.stdout.strip()],
+            explanation=ctx.tr("fp.basic.version_fail.explain"),
+            evidence=[detail] if detail else [version.stderr.strip() or version.stdout.strip()],
             source=EvidenceSource.FLATPAK,
         )
 

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import subprocess
+import sys
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 
@@ -40,6 +41,30 @@ _VALUE_FLAGS = frozenset(
         "--timeout",
     }
 )
+
+
+def child_env(base: Mapping[str, str] | None = None) -> dict[str, str]:
+    """Environment for system tools launched from diagnose/fix.
+
+    PyInstaller puts bundled OpenSSL on ``LD_LIBRARY_PATH``. Leaking that into
+    ``flatpak``, ``ss``, or ``systemctl`` makes those binaries fail on SteamOS
+    (``OPENSSL_3.4.0 not found``). Restore the pre-freeze path when possible.
+    """
+    env = dict(os.environ if base is None else base)
+    env["LANG"] = "C"
+    env["LC_ALL"] = "C"
+    orig = env.get("LD_LIBRARY_PATH_ORIG")
+    libpath = env.get("LD_LIBRARY_PATH", "")
+    frozen = bool(getattr(sys, "frozen", False)) or hasattr(sys, "_MEIPASS")
+    mei = "/_MEI" in libpath.replace("\\", "/")
+    if orig is not None:
+        if orig:
+            env["LD_LIBRARY_PATH"] = orig
+        else:
+            env.pop("LD_LIBRARY_PATH", None)
+    elif frozen or mei:
+        env.pop("LD_LIBRARY_PATH", None)
+    return env
 
 
 @dataclass(frozen=True)
@@ -124,9 +149,7 @@ class CommandRunner:
                 timed_out=True,
                 error="timeout",
             )
-        merged_env = os.environ.copy()
-        merged_env["LANG"] = "C"
-        merged_env["LC_ALL"] = "C"
+        merged_env = child_env()
         if env:
             merged_env.update(env)
         try:

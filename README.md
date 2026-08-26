@@ -32,8 +32,11 @@ Spanish: `deckdoctor --lang es`.
 When something is wrong:
 
 ```text
-🩺  DeckDoctor 0.3.1
+🩺  DeckDoctor 0.3.3
     SteamOS 3.8.14 (build 20260624.1, variant steamdeck) · Installed v3.2.6 (stable)
+    Internal  81.8 GB free of 224.0 GB
+    microSD   292.4 GB free of 469.0 GB
+    45 games  ·  16 internal  ·  29 microSD
 
     2 problem(s)
 

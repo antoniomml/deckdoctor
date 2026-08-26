@@ -53,10 +53,19 @@ def test_sanitizer_ip_replacements_are_stable() -> None:
 
 def test_sanitizer_redacts_private_ipv6() -> None:
     san = Sanitizer(user="deck", home="/home/deck", hostname="host")
-    out = san.apply("ula fd12:3456:789a:1::1 link fe80::1 loop ::1")
-    assert "fd12:3456:789a:1::1" not in out
-    assert "fe80::1" not in out
+    out = san.apply("ula fd12:3456:789a:1:2:3:4:5 link fe80:0:0:0:1:2:3:4")
+    assert "fd12:3456:789a:1:2:3:4:5" not in out
+    assert "fe80:0:0:0:1:2:3:4" not in out
     assert "<PRIVATE_IP_" in out
+
+
+def test_sanitizer_keeps_loopback_and_unspecified() -> None:
+    san = Sanitizer(user="deck", home="/home/deck", hostname="host")
+    out = san.apply("LISTEN 127.0.0.1:1337 0.0.0.0:* also ::1")
+    assert "127.0.0.1" in out
+    assert "0.0.0.0" in out
+    assert "::1" in out
+    assert "<PRIVATE_IP_" not in out
 
 
 def test_apply_obj_does_not_break_json_types() -> None:
@@ -76,8 +85,9 @@ def test_generic_hostname_is_not_redacted() -> None:
     assert "<HOSTNAME>" not in out
 
 
-def test_short_username_is_not_replaced() -> None:
-    san = Sanitizer(user="ab", home="/home/ab", hostname="xy")
-    out = san.apply("ab xy stay")
-    assert "ab" in out
-    assert "xy" in out
+def test_generic_username_is_not_replaced_inside_plugin_names() -> None:
+    san = Sanitizer(user="deck", home="/home/deck", hostname="steamdeck")
+    out = san.apply("plugin hltb-for-deck at /home/deck/homebrew/plugins/hltb-for-deck")
+    assert "hltb-for-deck" in out
+    assert "/home/<USER>/homebrew/plugins/hltb-for-deck" in out
+    assert "<USER>" not in out.replace("/home/<USER>", "")

@@ -94,10 +94,17 @@ CHECK_EN: dict[str, str] = {
     "sys.disk.critical.explain": (
         "Very little free space remains. Decky/plugin installs, Flatpak fetches, and SteamOS updates may fail."
     ),
-    "sys.disk.critical.rec": "Free space on /home and /var (games, Flatpak, Steam downloads) and re-run DeckDoctor.",
+    "sys.disk.critical.rec": "Free space on /home (games, Flatpak, Steam downloads) and re-run DeckDoctor.",
+    "sys.disk.critical.small.explain": (
+        "This small system partition is nearly full. Logs and temp files may fail. "
+        "On SteamOS, Flatpak and games live on /home, not here."
+    ),
+    "sys.disk.critical.small.rec": "Clear logs or tmp on this partition if you can. Do not confuse it with /home.",
     "sys.disk.warn": "{free} free on {path}",
     "sys.disk.warn.explain": "Less than 2 GB free can make Flatpak and OS updates unreliable.",
     "sys.disk.warn.rec": "Free some space before large updates.",
+    "sys.disk.warn.small.explain": "This small system partition is getting tight. Flatpak and games still live on /home.",
+    "sys.disk.warn.small.rec": "Clear logs or tmp on this partition if installs start failing.",
     "sys.disk.ok": "{free} free (lowest mount: {path})",
     "sys.time.past": "System clock year is {year}",
     "sys.time.past.explain": "A clock this far in the past commonly breaks TLS and update checks.",
@@ -108,6 +115,7 @@ CHECK_EN: dict[str, str] = {
     "sys.time.unsynced.explain": "Unsynchronized time can cause TLS and GitHub/SteamOS update failures.",
     "sys.time.unsynced.rec": "Wait for time sync or check network connectivity.",
     "sys.time.ok": "System time looks reasonable",
+    "sys.time.ok.ntp": "System time looks reasonable (NTP synchronized)",
     "steam.missing": "Steam client metadata not found",
     "steam.missing.explain": "No ~/.steam/steam or ~/.local/share/Steam tree was readable.",
     "steam.finding": "{detail}",
@@ -165,12 +173,25 @@ CHECK_EN: dict[str, str] = {
     "decky.ports.no_ss": "ss is not available; cannot inspect sockets",
     "decky.ports.timeout": "ss timed out",
     "decky.ports.conflict8080": "Port 8080 is in use by {owner}, expected steamwebhelper (Steam CEF debugger).",
+    "decky.ports.conflict8080.explain": "A process other than Steam's CEF debugger owns port 8080, so Decky cannot inject.",
     "decky.ports.conflict8080.rec": "Change the other application's port (Syncthing should use 8384). Decky cannot move Steam's CEF port.",
     "decky.ports.conflict1337": "Port 1337 is in use by {owner}, expected PluginLoader.",
+    "decky.ports.conflict1337.explain": "A named process other than PluginLoader owns Decky's port.",
     "decky.ports.conflict1337.rec": "Stop or reconfigure the process using 1337. DeckDoctor will not kill it.",
     "decky.ports.missing1337": "Decky service is active but port 1337 is not listening.",
+    "decky.ports.missing1337.explain": "plugin_loader.service is up, but nothing is listening on 1337.",
+    "decky.ports.unnamed": "listening (process name hidden)",
     "decky.ports.fail.rec": "Inspect listeners; do not kill processes from DeckDoctor.",
     "decky.ports.ok.explain": "8080 belongs to Steam CEF; 1337 belongs to Decky. No process was changed.",
+    "decky.ports.cef_forward": "CEF debugger is forwarded on port 8081 beyond localhost",
+    "decky.ports.cef_forward.explain": (
+        "steam-web-debug-portforward (or equivalent) is listening on 8081 on every interface. "
+        "Anyone on the same network can attach to Steam's CEF debugger."
+    ),
+    "decky.ports.cef_forward.rec": (
+        "If you did not turn this on, disable CEF forwarding in Decky settings (cef_forward) "
+        "and stop steam-web-debug-portforward.service. Keep 8080 on 127.0.0.1."
+    ),
     "decky.front.no_cef": "CEF remote debugging is not enabled",
     "decky.front.no_cef.explain": (
         "Decky injects into Steam through the CEF debugger. "
@@ -247,6 +268,7 @@ CHECK_EN: dict[str, str] = {
     "auto.timeout.explain": "The plugin itself appears installed; Flatpak did not return a remote list in time.",
     "auto.timeout.rec": "Check network and remotes. DeckDoctor will not delete remotes.",
     "auto.remote_fail": "AutoFlatpaks cannot generate its remote package list",
+    "auto.remote_fail.named": "AutoFlatpaks cannot list remotes because '{remote}' failed",
     "auto.remote_fail.explain": (
         "AutoFlatpaks is installed. Current versions call `flatpak remote-ls` to build the remote package list. "
         "Flatpak reported an error, so the plugin cannot show available packages."
@@ -254,6 +276,10 @@ CHECK_EN: dict[str, str] = {
     "auto.remote_fail.rec": (
         "Inspect `flatpak remotes`. If a remote you do not need is failing, you can remove it yourself. "
         "DeckDoctor will not delete them."
+    ),
+    "auto.remote_fail.named.rec": (
+        "Fix or remove the '{remote}' Flatpak remote yourself (expired keys are a common cause). "
+        "DeckDoctor will not delete remotes."
     ),
     "auto.logs": "AutoFlatpaks logs look unhappy even though remote-ls succeeded now",
     "auto.logs.explain": "The plugin may have failed earlier. Current Flatpak listing works.",
@@ -263,6 +289,10 @@ CHECK_EN: dict[str, str] = {
     "fp.basic.missing.explain": "AutoFlatpaks and Desktop software management need the Flatpak CLI.",
     "fp.basic.missing.info.explain": "Flatpak is not on this system. That is expected off SteamOS.",
     "fp.basic.version_fail": "flatpak --version failed",
+    "fp.basic.version_fail.explain": (
+        "The Flatpak CLI is on PATH but --version failed. "
+        "A bundled DeckDoctor binary must not leak its libraries into system tools."
+    ),
     "fp.basic.timeout": "flatpak remotes timed out",
     "fp.basic.list_fail": "Could not list Flatpak remotes",
     "fp.basic.list_fail.explain": "The CLI exists but listing remotes failed. Custom remotes are not treated as errors when listing succeeds.",
@@ -271,13 +301,23 @@ CHECK_EN: dict[str, str] = {
     "fp.upd.timeout": "Flatpak update check timed out",
     "fp.upd.timeout.explain": "A failed or timed-out check is not the same as zero updates.",
     "fp.upd.fail": "Flatpak could not check for updates",
+    "fp.upd.fail.remote": "Flatpak could not check for updates (remote {remote})",
     "fp.upd.fail.explain": "The remote query failed. DeckDoctor will not report this as 0 updates.",
     "fp.upd.fail.rec": "Inspect remotes (`flatpak remotes`) and stderr. Stale remotes are a common cause.",
+    "fp.upd.fail.remote.rec": (
+        "Fix or remove the '{remote}' remote (`flatpak remotes`). Expired GPG keys are a common cause. "
+        "DeckDoctor will not delete remotes."
+    ),
     "fp.upd.none": "No Flatpak updates reported",
     "fp.upd.none.explain": "remote-ls --updates succeeded with an empty list.",
     "fp.upd.some": "{count} Flatpak update(s) available",
     "fp.upd.some.explain": "Listed only. Diagnose did not apply updates.",
     "fp.upd.some.rec": "`deckdoctor fix` can run `flatpak update -y` after showing the plan. Or update from Discover when convenient.",
+    "fp.upd.some_and_remote": "{count} Flatpak update(s) available; remote '{remote}' failed",
+    "fp.upd.partial.explain": (
+        "A broken remote blocked the combined listing. Other remotes were checked one by one, "
+        "so updates from healthy remotes are still listed. DeckDoctor will not delete remotes."
+    ),
     "fp.eol.timeout": "flatpak list timed out while probing EOL metadata",
     "fp.eol.list_fail": "Could not list installed Flatpak runtimes",
     "fp.eol.list_fail.explain": "EOL is read from `flatpak info --show-metadata`.",
@@ -399,10 +439,17 @@ CHECK_ES: dict[str, str] = {
     "sys.disk.unknown": "No se pudo medir el espacio en disco",
     "sys.disk.critical": "Solo {free} libres en {path}",
     "sys.disk.critical.explain": "Queda muy poco espacio. Pueden fallar instalaciones de Decky, Flatpak y actualizaciones de SteamOS.",
-    "sys.disk.critical.rec": "Libera espacio en /home y /var (juegos, Flatpak, descargas de Steam) y vuelve a ejecutar DeckDoctor.",
+    "sys.disk.critical.rec": "Libera espacio en /home (juegos, Flatpak, descargas de Steam) y vuelve a ejecutar DeckDoctor.",
+    "sys.disk.critical.small.explain": (
+        "Esta partición de sistema tan pequeña está casi llena. Pueden fallar logs y temporales. "
+        "En SteamOS, Flatpak y los juegos viven en /home, no aquí."
+    ),
+    "sys.disk.critical.small.rec": "Limpia logs o tmp de esta partición si puedes. No la confundas con /home.",
     "sys.disk.warn": "{free} libres en {path}",
     "sys.disk.warn.explain": "Menos de 2 GB libres puede hacer poco fiables Flatpak y las actualizaciones del SO.",
     "sys.disk.warn.rec": "Libera espacio antes de actualizaciones grandes.",
+    "sys.disk.warn.small.explain": "Esta partición de sistema pequeña se está quedando justa. Flatpak y los juegos siguen en /home.",
+    "sys.disk.warn.small.rec": "Limpia logs o tmp de esta partición si empiezan a fallar instalaciones.",
     "sys.disk.ok": "{free} libres (peor montaje: {path})",
     "sys.time.past": "El reloj del sistema está en el año {year}",
     "sys.time.past.explain": "Un reloj tan atrasado suele romper TLS y las consultas de actualización.",
@@ -413,6 +460,7 @@ CHECK_ES: dict[str, str] = {
     "sys.time.unsynced.explain": "La hora sin sincronizar puede romper TLS y actualizaciones de GitHub/SteamOS.",
     "sys.time.unsynced.rec": "Espera a la sincronización o revisa la red.",
     "sys.time.ok": "La hora del sistema parece razonable",
+    "sys.time.ok.ntp": "La hora del sistema parece razonable (NTP sincronizado)",
     "steam.missing": "No hay metadatos del cliente Steam",
     "steam.missing.explain": "No se pudo leer ~/.steam/steam ni ~/.local/share/Steam.",
     "steam.finding": "{detail}",
@@ -469,12 +517,25 @@ CHECK_ES: dict[str, str] = {
     "decky.ports.no_ss": "ss no está disponible; no se pueden inspeccionar sockets",
     "decky.ports.timeout": "ss agotó el tiempo",
     "decky.ports.conflict8080": "El puerto 8080 lo usa {owner}, se esperaba steamwebhelper (depurador CEF de Steam).",
+    "decky.ports.conflict8080.explain": "Un proceso que no es el depurador CEF de Steam ocupa el puerto 8080, así que Decky no puede inyectarse.",
     "decky.ports.conflict8080.rec": "Cambia el puerto de la otra app (Syncthing debería usar 8384). Decky no puede mover el CEF de Steam.",
     "decky.ports.conflict1337": "El puerto 1337 lo usa {owner}, se esperaba PluginLoader.",
+    "decky.ports.conflict1337.explain": "Un proceso con nombre distinto de PluginLoader ocupa el puerto de Decky.",
     "decky.ports.conflict1337.rec": "Para o reconfigura el proceso en 1337. DeckDoctor no lo mata.",
     "decky.ports.missing1337": "El servicio de Decky está activo pero el puerto 1337 no escucha.",
+    "decky.ports.missing1337.explain": "plugin_loader.service está arriba, pero nada escucha en 1337.",
+    "decky.ports.unnamed": "escucha (nombre de proceso oculto)",
     "decky.ports.fail.rec": "Inspecciona quién escucha; no mates procesos desde DeckDoctor.",
     "decky.ports.ok.explain": "8080 es CEF de Steam; 1337 es Decky. No se cambió ningún proceso.",
+    "decky.ports.cef_forward": "El depurador CEF está reenviado en el puerto 8081 más allá de localhost",
+    "decky.ports.cef_forward.explain": (
+        "steam-web-debug-portforward (o equivalente) escucha en 8081 en todas las interfaces. "
+        "Cualquiera en la misma red puede engancharse al depurador CEF de Steam."
+    ),
+    "decky.ports.cef_forward.rec": (
+        "Si no lo activaste tú, desactiva el reenvío CEF en los ajustes de Decky (cef_forward) "
+        "y para steam-web-debug-portforward.service. Deja 8080 en 127.0.0.1."
+    ),
     "decky.front.no_cef": "El depurador remoto CEF no está activado",
     "decky.front.no_cef.explain": (
         "Decky se inyecta en Steam por el depurador CEF. "
@@ -551,6 +612,7 @@ CHECK_ES: dict[str, str] = {
     "auto.timeout.explain": "El plugin parece instalado; Flatpak no devolvió el listado a tiempo.",
     "auto.timeout.rec": "Revisa red y remotos. DeckDoctor no borra remotos.",
     "auto.remote_fail": "AutoFlatpaks no puede generar su listado remoto de paquetes",
+    "auto.remote_fail.named": "AutoFlatpaks no puede listar remotos porque falló '{remote}'",
     "auto.remote_fail.explain": (
         "AutoFlatpaks está instalado. Las versiones actuales llaman a `flatpak remote-ls` para armar el listado. "
         "Flatpak devolvió un error, así que el plugin no puede mostrar paquetes disponibles."
@@ -558,6 +620,10 @@ CHECK_ES: dict[str, str] = {
     "auto.remote_fail.rec": (
         "Inspecciona `flatpak remotes`. Si un remoto que no necesitas falla, puedes quitarlo tú. "
         "DeckDoctor no los borra."
+    ),
+    "auto.remote_fail.named.rec": (
+        "Repara o elimina tú el remoto Flatpak '{remote}' (una clave GPG caducada es habitual). "
+        "DeckDoctor no borra remotos."
     ),
     "auto.logs": "Los logs de AutoFlatpaks se ven mal aunque remote-ls ahora funciona",
     "auto.logs.explain": "El plugin pudo haber fallado antes. El listado Flatpak actual funciona.",
@@ -567,6 +633,10 @@ CHECK_ES: dict[str, str] = {
     "fp.basic.missing.explain": "AutoFlatpaks y la gestión de software de escritorio necesitan el CLI de Flatpak.",
     "fp.basic.missing.info.explain": "Flatpak no está en este sistema. Es esperable fuera de SteamOS.",
     "fp.basic.version_fail": "flatpak --version falló",
+    "fp.basic.version_fail.explain": (
+        "El CLI de Flatpak está en PATH pero --version falló. "
+        "El binario empaquetado de DeckDoctor no debe filtrar sus librerías a las herramientas del sistema."
+    ),
     "fp.basic.timeout": "flatpak remotes agotó el tiempo",
     "fp.basic.list_fail": "No se pudieron listar los remotos Flatpak",
     "fp.basic.list_fail.explain": "El CLI existe pero listar remotos falló. Un remoto extra no es error si el listado funciona.",
@@ -575,13 +645,23 @@ CHECK_ES: dict[str, str] = {
     "fp.upd.timeout": "La comprobación de actualizaciones Flatpak agotó el tiempo",
     "fp.upd.timeout.explain": "Un check fallido o a timeout no es lo mismo que cero actualizaciones.",
     "fp.upd.fail": "Flatpak no pudo comprobar actualizaciones",
+    "fp.upd.fail.remote": "Flatpak no pudo comprobar actualizaciones (remoto {remote})",
     "fp.upd.fail.explain": "La consulta remota falló. DeckDoctor no lo reportará como 0 actualizaciones.",
     "fp.upd.fail.rec": "Inspecciona remotos (`flatpak remotes`) y stderr. Los remotos obsoletos son una causa habitual.",
+    "fp.upd.fail.remote.rec": (
+        "Repara o elimina el remoto '{remote}' (`flatpak remotes`). Las claves GPG caducadas son una causa habitual. "
+        "DeckDoctor no borra remotos."
+    ),
     "fp.upd.none": "No hay actualizaciones Flatpak reportadas",
     "fp.upd.none.explain": "remote-ls --updates terminó bien con una lista vacía.",
     "fp.upd.some": "{count} actualización(es) Flatpak disponible(s)",
     "fp.upd.some.explain": "Solo se listan. El diagnóstico no aplicó actualizaciones.",
     "fp.upd.some.rec": "`deckdoctor fix` puede ejecutar `flatpak update -y` tras mostrar el plan. O actualiza desde Discover.",
+    "fp.upd.some_and_remote": "{count} actualización(es) Flatpak disponible(s); falló el remoto '{remote}'",
+    "fp.upd.partial.explain": (
+        "Un remoto roto bloqueó el listado conjunto. Se consultaron los demás de uno en uno, "
+        "así que las actualizaciones de remotos sanos sí aparecen. DeckDoctor no borra remotos."
+    ),
     "fp.eol.timeout": "flatpak list agotó el tiempo al leer metadatos EOL",
     "fp.eol.list_fail": "No se pudieron listar los runtimes Flatpak instalados",
     "fp.eol.list_fail.explain": "El EOL se lee de `flatpak info --show-metadata`.",

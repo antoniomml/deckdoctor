@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 import time
 from datetime import UTC, datetime
@@ -11,7 +12,7 @@ from deckdoctor import __version__
 from deckdoctor.command import CommandRunner
 from deckdoctor.context import DiagnosticContext, default_home, parse_only_ids
 from deckdoctor.fixes import KNOWN_FIX_IDS, apply_plans, collect_plans
-from deckdoctor.http import HttpClient
+from deckdoctor.http import HttpClient, system_ca_file
 from deckdoctor.i18n import detect_locale, translate
 from deckdoctor.models import FixPlan, Report, Status
 from deckdoctor.renderer import color_enabled, render_checks_catalog, render_cli, render_fix_plan, render_fix_results
@@ -126,7 +127,18 @@ def _filter_plans(plans: list[FixPlan], target: str | None, locale: str) -> tupl
     return matched, 0
 
 
+def _prefer_system_trust() -> None:
+    """Frozen builds often cannot verify TLS until the OS CA bundle is loaded."""
+    ca = system_ca_file()
+    if not ca:
+        return
+    os.environ.setdefault("SSL_CERT_FILE", ca)
+    if os.path.isdir("/etc/ssl/certs"):
+        os.environ.setdefault("SSL_CERT_DIR", "/etc/ssl/certs")
+
+
 def _main(argv: list[str] | None) -> int:
+    _prefer_system_trust()
     pre = argparse.ArgumentParser(add_help=False)
     pre.add_argument("--lang", choices=["en", "es"], default=None)
     pre_args, _ = pre.parse_known_args(argv)
