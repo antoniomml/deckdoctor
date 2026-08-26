@@ -13,7 +13,7 @@ A user can run `deckdoctor` on a Steam Deck (Desktop Mode or SSH) and get, in se
 2. If something is wrong: **what** we observed, **why** it matters, and a **safe** next step.
 3. A sanitised Markdown report suitable for GitHub issues / Discord.
 
-Non-goals for 0.3: automatic repair as the default command, hardware diagnostics, Proton/game troubleshooting, a Decky plugin UI. Opt-in `deckdoctor fix --yes` is the only mutating path.
+Non-goals for 0.3: automatic repair as the default command, hardware diagnostics, Proton/game troubleshooting, a Decky plugin UI. Opt-in `deckdoctor fix` (confirm, or `-y`) is the only mutating path.
 
 ## 2. CLI
 
@@ -23,13 +23,13 @@ deckdoctor diagnose
 deckdoctor -v              # every check
 deckdoctor report          # diagnose + write deckdoctor-report.md
 deckdoctor checks          # list check IDs
-deckdoctor fix             # print plan; apply only with --yes
+deckdoctor fix             # print plan, then ask y/N (TTY); -y skips the question
 deckdoctor --json
 deckdoctor --no-network
 deckdoctor --ascii
 deckdoctor --only ID,ID
 deckdoctor --timeout N
-deckdoctor --lang es|en
+deckdoctor --lang es|en     # default is English; LANG is ignored
 deckdoctor --output PATH
 deckdoctor --version
 ```
@@ -104,7 +104,7 @@ All subprocess work goes through one type:
 
 Forbidden: `systemctl restart/start/stop`, `chmod`/`chown`, `rm`, `flatpak update` (mutating), `flatpak uninstall`, `kill`.
 
-Allowed mutating *nothing* in diagnose. Creating `deckdoctor-report.md` is the only diagnose write. `deckdoctor fix --yes` uses a separate FixExecutor whitelist (`chmod +x` PluginLoader, CEF enable file, `systemctl enable --now plugin_loader.service`, `flatpak update -y`).
+Allowed mutating *nothing* in diagnose. Creating `deckdoctor-report.md` is the only diagnose write. `deckdoctor fix` uses a separate FixExecutor whitelist (`chmod +x` PluginLoader, CEF enable file, `systemctl enable --now plugin_loader.service`, `flatpak update -y`) after a TTY confirm or `-y`.
 
 ### 4.5 DiagnosticContext
 
@@ -155,7 +155,9 @@ Problems
 Run `deckdoctor report` for a sanitised diagnostic report.
 ```
 
-FACT vs LIKELY is printed on correlated items.
+Compact diagnose (default): brand, snapshot, inferred likely-cause stories, then FAIL/WARNING items (finding + next step). No severity labels, no repeated explanations, no FACT dumps. `deckdoctor -v` lists every check.
+
+FACT vs LIKELY is stored on diagnoses and printed in verbose / the Markdown report.
 
 JSON mirrors `CheckResult` + diagnoses + versions.
 
@@ -250,7 +252,7 @@ src/deckdoctor/
     autoflatpaks.py
 ```
 
-Fixes live in `deckdoctor/fixes/` with an explicit contract (what changes, reversibility, `--yes`). Diagnose never calls them.
+Fixes live in `deckdoctor/fixes/` with an explicit contract (what changes, reversibility, TTY confirm or `-y`). Diagnose never calls them.
 
 ## 10. Testing
 

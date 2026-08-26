@@ -7,6 +7,7 @@ import sys
 import time
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import TextIO
 
 from deckdoctor import __version__
 from deckdoctor.command import CommandRunner
@@ -46,7 +47,7 @@ def build_parser(locale: str | None = None) -> argparse.ArgumentParser:
     parser.add_argument("--lang", choices=["en", "es"], default=None, help=t("cli.lang"))
     parser.add_argument("-v", "--verbose", action="store_true", help=t("cli.verbose"))
     parser.add_argument("--no-color", action="store_true", help=t("cli.no_color"))
-    parser.add_argument("--yes", action="store_true", help=t("cli.yes"))
+    parser.add_argument("-y", "--yes", action="store_true", help=t("cli.yes"))
     parser.add_argument(
         "command",
         nargs="?",
@@ -91,6 +92,29 @@ def _exit_code(status_values: list[Status]) -> int:
 
 def _use_color(args: argparse.Namespace) -> bool:
     return color_enabled(ascii_mode=bool(args.ascii), color=not args.no_color)
+
+
+def confirm_fix(
+    *,
+    yes: bool,
+    locale: str,
+    stdin: TextIO | None = None,
+    stderr: TextIO | None = None,
+) -> bool:
+    """Apply only after an explicit yes: ``-y``/``--yes``, or ``y`` on a TTY."""
+    if yes:
+        return True
+    inp = stdin if stdin is not None else sys.stdin
+    err = stderr if stderr is not None else sys.stderr
+    if not bool(getattr(inp, "isatty", lambda: False)()):
+        print(translate(locale, "fix.need_tty"), file=err)
+        return False
+    print(translate(locale, "fix.confirm"), end="", file=err, flush=True)
+    answer = inp.readline()
+    if answer.strip().lower() in {"y", "yes"}:
+        return True
+    print(translate(locale, "fix.declined"), file=err)
+    return False
 
 
 def _print_report(report: Report, sanitizer: Sanitizer, plans: list[FixPlan], *, as_json: bool) -> None:
@@ -176,7 +200,9 @@ def _main(argv: list[str] | None) -> int:
         if code:
             return code
         print(sanitizer.apply(render_fix_plan(plans, locale, ascii_mode=bool(args.ascii), color=color)), end="")
-        if not plans or not args.yes:
+        if not plans:
+            return 0
+        if not confirm_fix(yes=bool(args.yes), locale=locale):
             return 0
         results = apply_plans(ctx, plans)
         print(sanitizer.apply(render_fix_results(results, locale, color=color, ascii_mode=bool(args.ascii))), end="")

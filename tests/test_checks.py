@@ -668,16 +668,16 @@ def test_snapshot_counts_games_and_splits_internal_vs_sd(
         return plenty_disk(path)
 
     monkeypatch.setattr(sys_disk, "_device_id", lambda path: hash(str(path)))
-    ctx = make_ctx(tmp_path, home=home, disk=mixed, locale="es")
+    ctx = make_ctx(tmp_path, home=home, disk=mixed)
     report = diagnose(ctx)
     assert ctx.facts.steam_game_count == 4
     assert ctx.facts.steam_games_internal == 2
     assert ctx.facts.steam_games_sd == 2
     assert ctx.facts.storage_sd is not None
     text = render_cli(report)
-    assert "Interno" in text
+    assert "Internal" in text
     assert "microSD" in text
-    assert "no insertada" not in text
-    assert "4 juegos" in text
-    assert "2 en interno" in text
-    assert "2 en microSD" in text
+    assert "not inserted" not in text
+    assert "4 games" in text
+    assert "2 internal" in text
+    assert "2 microSD" in text

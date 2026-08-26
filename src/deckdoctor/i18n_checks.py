@@ -148,7 +148,7 @@ CHECK_EN: dict[str, str] = {
     "decky.install.not_exec": "PluginLoader exists but is not executable",
     "decky.install.not_exec.explain": "systemd cannot spawn a non-executable PluginLoader (Permission denied / EXEC spawn failure).",
     "decky.install.not_exec.rec": "`deckdoctor fix` can set the executable bit. Do not chmod 777 the tree.",
-    "decky.install.ok": "Installed",
+    "decky.install.ok": "Decky",
     "decky.install.newer": "{finding}; latest stable appears to be {latest}",
     "decky.install.newer.explain": "Compared local .loader.version to the GitHub releases/latest redirect (not the REST API).",
     "decky.install.newer.rec": "Update Decky from Desktop Mode with the official installer if the QAM updater is unavailable.",
@@ -165,7 +165,7 @@ CHECK_EN: dict[str, str] = {
     "decky.service.failed.rec": "Read the backend logs. `deckdoctor fix` can start the unit only after the install looks valid. It will not restart blindly.",
     "decky.service.inactive": "plugin_loader.service is not running",
     "decky.service.inactive.explain": "The unit exists but is inactive. Decky cannot inject into Steam without this service.",
-    "decky.service.inactive.rec": "`deckdoctor fix` can start it (may need root). DeckDoctor diagnose never starts it.",
+    "decky.service.inactive.rec": "`deckdoctor fix` can start it (may need root).",
     "decky.service.active": "Service active",
     "decky.service.restarts.explain": "The service is up but has restarted recently. That can indicate a crash loop.",
     "decky.service.ok.explain": "systemd reports plugin_loader.service as active. Diagnose did not restart anything.",
@@ -189,8 +189,7 @@ CHECK_EN: dict[str, str] = {
         "Anyone on the same network can attach to Steam's CEF debugger."
     ),
     "decky.ports.cef_forward.rec": (
-        "If you did not turn this on, disable CEF forwarding in Decky settings (cef_forward) "
-        "and stop steam-web-debug-portforward.service. Keep 8080 on 127.0.0.1."
+        "If you did not turn this on, disable cef_forward in Decky and stop steam-web-debug-portforward.service."
     ),
     "decky.front.no_cef": "CEF remote debugging is not enabled",
     "decky.front.no_cef.explain": (
@@ -267,8 +266,8 @@ CHECK_EN: dict[str, str] = {
     "auto.timeout": "AutoFlatpaks cannot generate a remote package list (flatpak remote-ls timed out)",
     "auto.timeout.explain": "The plugin itself appears installed; Flatpak did not return a remote list in time.",
     "auto.timeout.rec": "Check network and remotes. DeckDoctor will not delete remotes.",
-    "auto.remote_fail": "AutoFlatpaks cannot generate its remote package list",
-    "auto.remote_fail.named": "AutoFlatpaks cannot list remotes because '{remote}' failed",
+    "auto.remote_fail": "Cannot generate a remote package list",
+    "auto.remote_fail.named": "Cannot list remotes because '{remote}' failed",
     "auto.remote_fail.explain": (
         "AutoFlatpaks is installed. Current versions call `flatpak remote-ls` to build the remote package list. "
         "Flatpak reported an error, so the plugin cannot show available packages."
@@ -277,10 +276,7 @@ CHECK_EN: dict[str, str] = {
         "Inspect `flatpak remotes`. If a remote you do not need is failing, you can remove it yourself. "
         "DeckDoctor will not delete them."
     ),
-    "auto.remote_fail.named.rec": (
-        "Fix or remove the '{remote}' Flatpak remote yourself (expired keys are a common cause). "
-        "DeckDoctor will not delete remotes."
-    ),
+    "auto.remote_fail.named.rec": "Fix or remove '{remote}' yourself (expired GPG is common).",
     "auto.logs": "AutoFlatpaks logs look unhappy even though remote-ls succeeded now",
     "auto.logs.explain": "The plugin may have failed earlier. Current Flatpak listing works.",
     "auto.ok": "AutoFlatpaks installed; Flatpak remote listing succeeded",
@@ -310,10 +306,11 @@ CHECK_EN: dict[str, str] = {
     ),
     "fp.upd.none": "No Flatpak updates reported",
     "fp.upd.none.explain": "remote-ls --updates succeeded with an empty list.",
-    "fp.upd.some": "{count} Flatpak update(s) available",
+    "fp.upd.some": "{count} update(s) available",
     "fp.upd.some.explain": "Listed only. Diagnose did not apply updates.",
-    "fp.upd.some.rec": "`deckdoctor fix` can run `flatpak update -y` after showing the plan. Or update from Discover when convenient.",
-    "fp.upd.some_and_remote": "{count} Flatpak update(s) available; remote '{remote}' failed",
+    "fp.upd.some.rec": "`deckdoctor fix` can apply the updates.",
+    "fp.upd.some_and_remote": "{count} update(s) available; remote '{remote}' failed",
+    "fp.upd.some_and_remote.rec": "`deckdoctor fix` can apply the updates.",
     "fp.upd.partial.explain": (
         "A broken remote blocked the combined listing. Other remotes were checked one by one, "
         "so updates from healthy remotes are still listed. DeckDoctor will not delete remotes."
@@ -492,7 +489,7 @@ CHECK_ES: dict[str, str] = {
     "decky.install.not_exec": "PluginLoader existe pero no es ejecutable",
     "decky.install.not_exec.explain": "systemd no puede lanzar un PluginLoader sin bit de ejecución (Permission denied / EXEC).",
     "decky.install.not_exec.rec": "`deckdoctor fix` puede poner el bit de ejecución. No hagas chmod 777 al árbol.",
-    "decky.install.ok": "Instalado",
+    "decky.install.ok": "Decky",
     "decky.install.newer": "{finding}; la última estable parece {latest}",
     "decky.install.newer.explain": "Se comparó .loader.version local con la redirección de GitHub releases/latest (no la API REST).",
     "decky.install.newer.rec": "Actualiza Decky desde el modo escritorio con el instalador oficial si el actualizador del QAM no está.",
@@ -509,7 +506,7 @@ CHECK_ES: dict[str, str] = {
     "decky.service.failed.rec": "Lee los logs del backend. `deckdoctor fix` solo arranca la unidad si la instalación parece válida.",
     "decky.service.inactive": "plugin_loader.service no está en ejecución",
     "decky.service.inactive.explain": "La unidad existe pero está inactiva. Sin este servicio Decky no puede inyectarse en Steam.",
-    "decky.service.inactive.rec": "`deckdoctor fix` puede arrancarlo (puede hacer falta root). El diagnóstico nunca lo arranca.",
+    "decky.service.inactive.rec": "`deckdoctor fix` puede arrancarlo (puede hacer falta root).",
     "decky.service.active": "Servicio activo",
     "decky.service.restarts.explain": "El servicio está arriba pero se ha reiniciado hace poco. Puede ser un bucle de crash.",
     "decky.service.ok.explain": "systemd reporta plugin_loader.service como activo. El diagnóstico no reinició nada.",
@@ -533,8 +530,7 @@ CHECK_ES: dict[str, str] = {
         "Cualquiera en la misma red puede engancharse al depurador CEF de Steam."
     ),
     "decky.ports.cef_forward.rec": (
-        "Si no lo activaste tú, desactiva el reenvío CEF en los ajustes de Decky (cef_forward) "
-        "y para steam-web-debug-portforward.service. Deja 8080 en 127.0.0.1."
+        "Si no lo activaste tú, desactiva cef_forward en Decky y para steam-web-debug-portforward.service."
     ),
     "decky.front.no_cef": "El depurador remoto CEF no está activado",
     "decky.front.no_cef.explain": (
@@ -611,8 +607,8 @@ CHECK_ES: dict[str, str] = {
     "auto.timeout": "AutoFlatpaks no puede generar el listado remoto (flatpak remote-ls agotó el tiempo)",
     "auto.timeout.explain": "El plugin parece instalado; Flatpak no devolvió el listado a tiempo.",
     "auto.timeout.rec": "Revisa red y remotos. DeckDoctor no borra remotos.",
-    "auto.remote_fail": "AutoFlatpaks no puede generar su listado remoto de paquetes",
-    "auto.remote_fail.named": "AutoFlatpaks no puede listar remotos porque falló '{remote}'",
+    "auto.remote_fail": "No puede generar el listado remoto de paquetes",
+    "auto.remote_fail.named": "No puede listar remotos porque falló '{remote}'",
     "auto.remote_fail.explain": (
         "AutoFlatpaks está instalado. Las versiones actuales llaman a `flatpak remote-ls` para armar el listado. "
         "Flatpak devolvió un error, así que el plugin no puede mostrar paquetes disponibles."
@@ -621,10 +617,7 @@ CHECK_ES: dict[str, str] = {
         "Inspecciona `flatpak remotes`. Si un remoto que no necesitas falla, puedes quitarlo tú. "
         "DeckDoctor no los borra."
     ),
-    "auto.remote_fail.named.rec": (
-        "Repara o elimina tú el remoto Flatpak '{remote}' (una clave GPG caducada es habitual). "
-        "DeckDoctor no borra remotos."
-    ),
+    "auto.remote_fail.named.rec": "Repara o elimina '{remote}' tú (una clave GPG caducada es habitual).",
     "auto.logs": "Los logs de AutoFlatpaks se ven mal aunque remote-ls ahora funciona",
     "auto.logs.explain": "El plugin pudo haber fallado antes. El listado Flatpak actual funciona.",
     "auto.ok": "AutoFlatpaks instalado; el listado remoto de Flatpak funcionó",
@@ -654,10 +647,11 @@ CHECK_ES: dict[str, str] = {
     ),
     "fp.upd.none": "No hay actualizaciones Flatpak reportadas",
     "fp.upd.none.explain": "remote-ls --updates terminó bien con una lista vacía.",
-    "fp.upd.some": "{count} actualización(es) Flatpak disponible(s)",
+    "fp.upd.some": "{count} actualización(es) disponible(s)",
     "fp.upd.some.explain": "Solo se listan. El diagnóstico no aplicó actualizaciones.",
-    "fp.upd.some.rec": "`deckdoctor fix` puede ejecutar `flatpak update -y` tras mostrar el plan. O actualiza desde Discover.",
-    "fp.upd.some_and_remote": "{count} actualización(es) Flatpak disponible(s); falló el remoto '{remote}'",
+    "fp.upd.some.rec": "`deckdoctor fix` puede aplicar las actualizaciones.",
+    "fp.upd.some_and_remote": "{count} actualización(es) disponible(s); falló el remoto '{remote}'",
+    "fp.upd.some_and_remote.rec": "`deckdoctor fix` puede aplicar las actualizaciones.",
     "fp.upd.partial.explain": (
         "Un remoto roto bloqueó el listado conjunto. Se consultaron los demás de uno en uno, "
         "así que las actualizaciones de remotos sanos sí aparecen. DeckDoctor no borra remotos."

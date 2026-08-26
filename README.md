@@ -8,7 +8,7 @@
 
 Decky is down. Apps will not update. SteamOS says one thing and the Deck does another. DeckDoctor looks at **SteamOS, Decky, plugins, and Flatpak**, then tells you what it saw, why it matters, and what is safe to do next.
 
-It does not change anything while it looks. If a safe fix exists, it prints a plan. Nothing is applied until you type `--yes`.
+It does not change anything while it looks. If a safe fix exists, `deckdoctor fix` shows the plan and asks **y/N**. Pass `-y` to skip the question.
 
 ---
 
@@ -23,7 +23,7 @@ deckdoctor
 
 The first launch takes a few seconds. After that, just run `deckdoctor`.
 
-Spanish: `deckdoctor --lang es`.
+The UI is English. Use `--lang es` only if you want Spanish.
 
 ---
 
@@ -32,33 +32,26 @@ Spanish: `deckdoctor --lang es`.
 When something is wrong:
 
 ```text
-🩺  DeckDoctor 0.3.3
-    SteamOS 3.8.14 (build 20260624.1, variant steamdeck) · Installed v3.2.6 (stable)
+🩺  DeckDoctor 0.3.4
+    SteamOS 3.8.14 (build 20260624.1, variant steamdeck) · Decky v3.2.6 (stable)
     Internal  81.8 GB free of 224.0 GB
     microSD   292.4 GB free of 469.0 GB
     45 games  ·  16 internal  ·  29 microSD
 
-    2 problem(s)
+❌  Decky service
+    plugin_loader.service is not running
+    → `deckdoctor fix` can start it (may need root).
 
-❗  Problems
-  ❌  Decky service  ·  serious
-      plugin_loader.service is not running
-      The unit exists but is inactive. Decky cannot inject into Steam without this service.
-      → `deckdoctor fix` can start it (may need root). DeckDoctor diagnose never starts it.
+⚠️  Flatpak updates
+    2 update(s) available
+    → `deckdoctor fix` can apply the updates.
 
-  ⚠️  Flatpak updates  ·  watch
-      2 Flatpak update(s) available
-      Listed only. Diagnose did not apply updates.
-      → `deckdoctor fix` can run `flatpak update -y` after showing the plan. Or update from Discover when convenient.
+    ✅  19 ok    ❌  1    ⚠️  1
 
-
-✅  19 ok   ❌  1   ⚠️  1
-
-👉  What you can do
-    📄  deckdoctor report     save a report you can paste on Discord
-    🔍  deckdoctor -v         show every check
-    🔧  deckdoctor fix        2 safe fix(es) ready (shows a plan, changes nothing yet)
-    Looking around never changes anything. Fixes only run with --yes.
+    📄  deckdoctor report     Discord report
+    🔍  deckdoctor -v         every check
+    🔧  deckdoctor fix        2 safe plan(s)
+    Diagnose never changes anything. `deckdoctor fix` asks first.
 ```
 
 When everything is fine, you get **All clear** and a ✅.
@@ -71,8 +64,8 @@ When everything is fine, you get **All clear** and a ✅.
 |---|---|
 | See what is going on | `deckdoctor` |
 | Save a report for Discord | `deckdoctor report` |
-| Preview safe fixes (changes nothing) | `deckdoctor fix` |
-| Apply that plan | `deckdoctor fix --yes` |
+| See the plan, then confirm y/N | `deckdoctor fix` |
+| Apply without asking | `deckdoctor fix -y` |
 
 `deckdoctor -v` shows every check, including the ones that passed.
 

@@ -149,11 +149,7 @@ def run(ctx: DiagnosticContext) -> CheckResult:
             Status.WARNING,
             finding,
             explanation=ctx.tr("fp.upd.some.explain") if not failed else ctx.tr("fp.upd.partial.explain"),
-            recommendation=(
-                ctx.tr("fp.upd.some.rec")
-                if not failed
-                else ctx.tr("fp.upd.fail.remote.rec", remote=", ".join(failed))
-            ),
+            recommendation=ctx.tr("fp.upd.some.rec"),
             evidence=evidence + rows[:20],
             source=EvidenceSource.FLATPAK,
             severity=Severity.MEDIUM,
