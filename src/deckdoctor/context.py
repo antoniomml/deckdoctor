@@ -4,14 +4,17 @@ import json
 import os
 import pwd
 import shutil
-from collections.abc import Callable
+import time
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 from deckdoctor.command import CommandResult, CommandRunner
+from deckdoctor.facts import Facts
 from deckdoctor.http import HttpClient
+from deckdoctor.i18n import Locale, detect_locale, translate
 
 DiskUsageFn = Callable[[Path], shutil._ntuple_diskusage]
 
@@ -56,7 +59,7 @@ class DiagnosticContext:
     home: Path
     runner: CommandRunner
     http: HttpClient
-    now: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    now: datetime = field(default_factory=lambda: datetime.now(UTC))
     network_enabled: bool = True
     os_release_path: Path = Path("/etc/os-release")
     atomupd_manifest_paths: tuple[Path, ...] = (
@@ -69,12 +72,21 @@ class DiagnosticContext:
     disk_usage: DiskUsageFn | None = None
     hostname: str = field(default_factory=lambda: os.uname().nodename if hasattr(os, "uname") else "unknown")
     user: str = ""
-    facts: dict[str, Any] = field(default_factory=dict)
+    facts: Facts = field(default_factory=Facts)
+    locale: Locale = "en"
+    ascii_mode: bool = False
+    only_ids: frozenset[str] | None = None
+    deadline: float | None = None
     _cmd_cache: dict[tuple[str, ...], CommandResult] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         if not self.user:
             self.user = default_user(self.home)
+        if self.locale not in {"en", "es"}:
+            self.locale = detect_locale(str(self.locale))
+
+    def tr(self, key: str, **kwargs: object) -> str:
+        return translate(self.locale, key, **kwargs)
 
     @property
     def decky_home(self) -> Path:
@@ -124,14 +136,31 @@ class DiagnosticContext:
         except OSError:
             return False
 
+    def remaining_timeout(self, requested: float) -> float:
+        if self.deadline is None:
+            return requested
+        left = self.deadline - time.monotonic()
+        if left <= 0:
+            return 0.0
+        return min(requested, left)
+
+    def timed_out(self) -> bool:
+        return self.deadline is not None and time.monotonic() >= self.deadline
+
     def run(self, argv: list[str], *, timeout: float = 15.0, cache: bool = True) -> CommandResult:
         key = tuple(argv)
         if cache and key in self._cmd_cache:
             return self._cmd_cache[key]
-        result = self.runner.run(argv, timeout=timeout)
+        capped = self.remaining_timeout(timeout)
+        result = self.runner.run(argv, timeout=capped)
         if cache:
             self._cmd_cache[key] = result
         return result
+
+    def probe_flatpak_listing(self) -> CommandResult:
+        """Shared ``flatpak remote-ls -a`` used by FP-UPDATES and AUTOFLATPAKS."""
+        argv = ["flatpak", "remote-ls", "--columns=ref,origin", "-a"]
+        return self.run(argv, timeout=45.0)
 
     def measure_disk(self, path: Path) -> shutil._ntuple_diskusage | None:
         fn = self.disk_usage or shutil.disk_usage
@@ -145,7 +174,7 @@ class DiagnosticContext:
         if text is None:
             return {}
         parsed = parse_os_release(text)
-        self.facts["os_release"] = parsed
+        self.facts.os_release = parsed
         return parsed
 
     def load_atomupd_manifest(self) -> dict[str, Any]:
@@ -158,7 +187,18 @@ class DiagnosticContext:
             except json.JSONDecodeError:
                 continue
             if isinstance(data, dict):
-                self.facts["atomupd_manifest"] = data
-                self.facts["atomupd_manifest_path"] = str(path)
+                self.facts.atomupd_manifest = data
+                self.facts.atomupd_manifest_path = str(path)
                 return data
         return {}
+
+
+def parse_only_ids(raw: str | Sequence[str] | None) -> frozenset[str] | None:
+    if raw is None:
+        return None
+    if isinstance(raw, str):
+        parts = raw.split(",")
+    else:
+        parts = list(raw)
+    ids = frozenset(p.strip().upper() for p in parts if p.strip())
+    return ids or None

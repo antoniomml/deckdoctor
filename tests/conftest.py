@@ -3,8 +3,9 @@ from __future__ import annotations
 import json
 import shutil
 from collections.abc import Callable
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -41,7 +42,7 @@ def tiny_disk(_path: Path) -> shutil._ntuple_diskusage:
     return shutil._ntuple_diskusage(64 * 1024**3, 64 * 1024**3 - 120 * 1024**2, 120 * 1024**2)
 
 
-def write_plugin(root: Path, dirname: str, name: str, version: str = "1.0.0", remote: list | None = None) -> Path:
+def write_plugin(root: Path, dirname: str, name: str, version: str = "1.0.0", remote: list[Any] | None = None) -> Path:
     d = root / "homebrew" / "plugins" / dirname
     d.mkdir(parents=True)
     (d / "plugin.json").write_text(json.dumps({"name": name, "author": "test"}), encoding="utf-8")
@@ -146,6 +147,10 @@ def make_ctx(
     disk: Callable[[Path], shutil._ntuple_diskusage] = plenty_disk,
     unit_text: str | None = "[Service]\nExecStart=/home/deck/homebrew/services/PluginLoader\n",
     network: bool = True,
+    locale: str = "en",
+    only_ids: frozenset[str] | None = None,
+    deadline: float | None = None,
+    ascii_mode: bool = False,
 ) -> DiagnosticContext:
     home = home or make_home(tmp)
     os_path = tmp / "os-release"
@@ -158,13 +163,17 @@ def make_ctx(
         home=home,
         runner=runner,
         http=http or healthy_http(),
-        now=datetime(2026, 8, 25, 12, 0, tzinfo=timezone.utc),
+        now=datetime(2026, 8, 25, 12, 0, tzinfo=UTC),
         network_enabled=network,
         os_release_path=os_path,
         systemd_unit_path=unit_path,
         disk_usage=disk,
         hostname="steamdeck",
         user="deck",
+        locale=locale,  # type: ignore[arg-type]
+        only_ids=only_ids,
+        deadline=deadline,
+        ascii_mode=ascii_mode,
     )
     return ctx
 

@@ -23,7 +23,7 @@ def run(ctx: DiagnosticContext) -> CheckResult:
     resp = ctx.http.request("GET", STORE_URL, timeout=10.0)
     evidence = [f"GET {STORE_URL} → status={resp.status} error={resp.error}"]
     if not resp.ok:
-        ctx.facts["store_ok"] = False
+        ctx.facts.store_ok = False
         return result(
             ID,
             TITLE,
@@ -37,7 +37,7 @@ def run(ctx: DiagnosticContext) -> CheckResult:
 
     body = resp.body.lstrip()
     looks_json = body.startswith("[") or body.startswith("{")
-    ctx.facts["store_ok"] = looks_json
+    ctx.facts.store_ok = looks_json
     if not looks_json:
         return result(
             ID,

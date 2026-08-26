@@ -20,21 +20,27 @@ def _fmt(num: int) -> str:
     return f"{num} B"
 
 
+def _device_id(path: Path) -> int | None:
+    try:
+        return path.stat().st_dev
+    except OSError:
+        return None
+
+
 def run(ctx: DiagnosticContext) -> CheckResult:
-    mounts = []
-    seen: set[str] = set()
-    for raw in (ctx.home, Path("/home"), Path("/var"), Path("/")):
-        path = Path(raw)
-        try:
-            resolved = str(path.resolve())
-        except OSError:
-            resolved = str(path)
-        if resolved in seen:
-            continue
-        seen.add(resolved)
+    # SteamOS root (`/`) is often nearly full by design. Only /home (user home)
+    # and /var matter for Decky, Flatpak, and updater writes.
+    mounts: list[tuple[str, int, int, int]] = []
+    seen_dev: set[int] = set()
+    for path in (ctx.home, Path("/var")):
         usage = ctx.measure_disk(path)
         if usage is None:
             continue
+        dev = _device_id(path)
+        if dev is not None:
+            if dev in seen_dev:
+                continue
+            seen_dev.add(dev)
         mounts.append((str(path), usage.total, usage.used, usage.free))
 
     if not mounts:
@@ -47,11 +53,11 @@ def run(ctx: DiagnosticContext) -> CheckResult:
         )
 
     evidence = [f"{p}: {_fmt(free)} free of {_fmt(total)}" for p, total, _used, free in mounts]
-    ctx.facts["disk"] = [{"path": p, "free": free, "total": total} for p, total, _u, free in mounts]
+    ctx.facts.disk = [{"path": p, "free": free, "total": total} for p, total, _u, free in mounts]
 
     min_free = min(m[3] for m in mounts)
     min_path = min(mounts, key=lambda m: m[3])[0]
-    ctx.facts["disk_min_free"] = min_free
+    ctx.facts.disk_min_free = min_free
 
     if min_free < CRITICAL_FREE:
         return result(

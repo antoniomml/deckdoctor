@@ -33,17 +33,19 @@ It is **not**:
 
 Requires a Steam Deck (or similar x86_64 Linux handheld). No `pacman`, no Flatpak, no Decky.
 
-**Option A — install script** (downloads the latest release binary):
+**Option A — install script** (downloads the latest release binary and verifies `SHA256SUMS`):
 
 ```bash
 curl -L https://raw.githubusercontent.com/antoniomml/deckdoctor/main/scripts/install.sh | sh
 ```
 
-**Option B — download the binary** into `~/.local/bin`:
+**Option B — download the binary** into `~/.local/bin` and check the sums file:
 
 ```bash
 mkdir -p ~/.local/bin
 curl -L https://github.com/antoniomml/deckdoctor/releases/latest/download/deckdoctor -o ~/.local/bin/deckdoctor
+curl -L https://github.com/antoniomml/deckdoctor/releases/latest/download/SHA256SUMS -o /tmp/SHA256SUMS
+( cd ~/.local/bin && sha256sum -c /tmp/SHA256SUMS )
 chmod +x ~/.local/bin/deckdoctor
 ```
 
@@ -64,9 +66,15 @@ deckdoctor diagnose
 deckdoctor report          # writes ./deckdoctor-report.md (sanitised)
 deckdoctor --json
 deckdoctor --no-network    # skip GitHub / store / remote Flatpak / updater queries
+deckdoctor --lang es       # Spanish UI chrome (or LANG=es_ES.UTF-8)
+deckdoctor --ascii         # ASCII marks (OK / X / !) instead of Unicode
+deckdoctor --only SYS-DISK,DECKY-INSTALL
+deckdoctor --timeout 40    # global deadline in seconds (0 disables; default 60)
 ```
 
-Exit code `1` means at least one **FAIL**. Warnings do not fail the process.
+Exit code `1` means at least one **FAIL**. Warnings do not fail the process. Exit code `2` is an internal tool error.
+
+The PyInstaller onefile binary unpacks on first launch; that can take a few seconds. CI builds it on Ubuntu — treat it as best-effort on SteamOS.
 
 ## Network / Red
 

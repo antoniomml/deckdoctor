@@ -36,7 +36,7 @@ def _read_branch(ctx: DiagnosticContext) -> str | None:
                 value = int(data["branch"])
             except (TypeError, ValueError):
                 continue
-            ctx.facts["decky_settings_file"] = str(path)
+            ctx.facts.decky_settings_file = str(path)
             return {0: "stable", 1: "prerelease", 2: "testing"}.get(value, str(value))
     return None
 
@@ -45,11 +45,11 @@ def run(ctx: DiagnosticContext) -> CheckResult:
     home = ctx.decky_home
     loader = ctx.plugin_loader
     evidence: list[str] = []
-    ctx.facts["decky_home"] = str(home)
+    ctx.facts.decky_home = str(home)
 
     if not ctx.exists(home):
-        ctx.facts["decky_installed"] = False
-        ctx.facts["plugin_loader_present"] = False
+        ctx.facts.decky_installed = False
+        ctx.facts.plugin_loader_present = False
         return result(
             ID,
             TITLE,
@@ -66,26 +66,26 @@ def run(ctx: DiagnosticContext) -> CheckResult:
     evidence.append(f"present {home}")
     version_text = (ctx.read_text(ctx.loader_version_file) or "").strip()
     if version_text:
-        ctx.facts["decky_version"] = version_text
+        ctx.facts.decky_version = version_text
         evidence.append(f"version file: {version_text}")
 
     branch = _read_branch(ctx)
     if branch:
-        ctx.facts["decky_channel"] = branch
+        ctx.facts.decky_channel = branch
         evidence.append(f"channel: {branch}")
     elif version_text and "-pre" in version_text:
         branch = "prerelease"
-        ctx.facts["decky_channel"] = branch
+        ctx.facts.decky_channel = branch
 
     unit_text = ctx.read_text(ctx.systemd_unit_path)
     if unit_text is None:
         evidence.append(f"unit file not readable: {ctx.systemd_unit_path}")
-        ctx.facts["decky_unit_readable"] = False
+        ctx.facts.decky_unit_readable = False
     else:
-        ctx.facts["decky_unit_readable"] = True
+        ctx.facts.decky_unit_readable = True
         if any(m in unit_text for m in _GITHUB_429_MARKERS):
-            ctx.facts["decky_unit_is_429"] = True
-            ctx.facts["plugin_loader_present"] = ctx.exists(loader)
+            ctx.facts.decky_unit_is_429 = True
+            ctx.facts.plugin_loader_present = ctx.exists(loader)
             return result(
                 ID,
                 TITLE,
@@ -109,11 +109,11 @@ def run(ctx: DiagnosticContext) -> CheckResult:
             evidence.append("systemd unit has ExecStart")
 
     loader_present = ctx.exists(loader)
-    ctx.facts["plugin_loader_present"] = loader_present
-    ctx.facts["decky_installed"] = True
+    ctx.facts.plugin_loader_present = loader_present
+    ctx.facts.decky_installed = True
 
     if not loader_present:
-        ctx.facts["decky_incomplete"] = True
+        ctx.facts.decky_incomplete = True
         return result(
             ID,
             TITLE,
@@ -134,7 +134,7 @@ def run(ctx: DiagnosticContext) -> CheckResult:
         )
 
     executable = os.access(loader, os.X_OK)
-    ctx.facts["plugin_loader_executable"] = executable
+    ctx.facts.plugin_loader_executable = executable
     evidence.append(f"PluginLoader present executable={executable}")
     if not executable:
         return result(
@@ -166,7 +166,7 @@ def run(ctx: DiagnosticContext) -> CheckResult:
         loc = http.final_url or http.headers.get("location") or ""
         if "/tag/" in loc:
             latest = loc.rstrip("/").split("/tag/")[-1]
-            ctx.facts["decky_latest_stable"] = latest
+            ctx.facts.decky_latest_stable = latest
             evidence.append(f"latest stable redirect: {latest}")
 
     extra = {"version": version_text, "channel": branch, "latest_stable": latest}

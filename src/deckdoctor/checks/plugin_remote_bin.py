@@ -13,8 +13,8 @@ SIGNATURE = "Failed Downloading Remote Binaries"
 
 
 def run(ctx: DiagnosticContext) -> CheckResult:
-    plugins = ctx.facts.get("plugins") or []
-    if ctx.facts.get("decky_installed") is False:
+    plugins = ctx.facts.plugins or []
+    if ctx.facts.decky_installed is False:
         return result(
             ID,
             TITLE,
@@ -25,7 +25,7 @@ def run(ctx: DiagnosticContext) -> CheckResult:
 
     issues: list[str] = []
     evidence: list[str] = []
-    log_text = (ctx.facts.get("decky_log_text") or "") + "\n"
+    log_text = (ctx.facts.decky_log_text or "") + "\n"
     # plugin logs
     for plugin in plugins:
         log_file = Path(ctx.logs_dir) / plugin["dir"] / "plugin.log"
@@ -54,7 +54,7 @@ def run(ctx: DiagnosticContext) -> CheckResult:
                 issues.append(f"{plugin['name']}: missing remote binary {name}")
 
     log_hit = SIGNATURE in log_text
-    ctx.facts["remote_binary_log_hit"] = log_hit
+    ctx.facts.remote_binary_log_hit = log_hit
     if log_hit:
         evidence.append(f"log signature: {SIGNATURE}")
 

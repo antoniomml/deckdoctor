@@ -24,7 +24,7 @@ def run(ctx: DiagnosticContext) -> CheckResult:
     head = ctx.http.request("HEAD", HEAD_URL, timeout=8.0)
     evidence = [f"HEAD {HEAD_URL} → status={head.status} error={head.error}"]
     if not head.ok and head.status is None:
-        ctx.facts["github_reachable"] = False
+        ctx.facts.github_reachable = False
         return result(
             ID,
             TITLE,
@@ -37,7 +37,7 @@ def run(ctx: DiagnosticContext) -> CheckResult:
             severity=Severity.HIGH,
         )
 
-    ctx.facts["github_reachable"] = True
+    ctx.facts.github_reachable = True
     api = ctx.http.request("GET", RATE_URL, timeout=8.0)
     evidence.append(f"GET {RATE_URL} → status={api.status} error={api.error}")
     if not api.ok:
@@ -54,7 +54,10 @@ def run(ctx: DiagnosticContext) -> CheckResult:
     try:
         payload = api.json() or {}
         core = (payload.get("resources") or {}).get("core") or {}
-        remaining = int(core.get("remaining"))
+        remaining_raw = core.get("remaining")
+        if remaining_raw is None:
+            raise TypeError("missing remaining")
+        remaining = int(remaining_raw)
         limit = int(core.get("limit", 60))
         reset = int(core.get("reset", 0))
     except (TypeError, ValueError, AttributeError):
@@ -67,9 +70,9 @@ def run(ctx: DiagnosticContext) -> CheckResult:
             source=EvidenceSource.NETWORK,
         )
 
-    ctx.facts["github_remaining"] = remaining
-    ctx.facts["github_limit"] = limit
-    ctx.facts["github_reset"] = reset
+    ctx.facts.github_remaining = remaining
+    ctx.facts.github_limit = limit
+    ctx.facts.github_reset = reset
     reset_in = ""
     if reset:
         delta = max(0, reset - int(ctx.now.timestamp()))

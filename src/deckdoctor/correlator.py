@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from deckdoctor.facts import Facts
+from deckdoctor.i18n import translate
 from deckdoctor.models import CheckResult, Confidence, Diagnosis, Severity, Status
 
 
@@ -7,30 +9,26 @@ def _by_id(results: list[CheckResult]) -> dict[str, CheckResult]:
     return {r.check_id: r for r in results}
 
 
-def correlate(results: list[CheckResult], facts: dict) -> list[Diagnosis]:
+def correlate(results: list[CheckResult], facts: Facts, locale: str = "en") -> list[Diagnosis]:
     """Explicit rules only. Prefer UNKNOWN over storytelling."""
     found: list[Diagnosis] = []
     by = _by_id(results)
 
-    incomplete = bool(facts.get("decky_incomplete")) or (
-        facts.get("decky_installed") and facts.get("plugin_loader_present") is False
+    def t(key: str) -> str:
+        return translate(locale, key)
+
+    incomplete = bool(facts.decky_incomplete) or (
+        facts.decky_installed and facts.plugin_loader_present is False
     )
-    remaining = facts.get("github_remaining")
-    unit_429 = bool(facts.get("decky_unit_is_429"))
+    remaining = facts.github_remaining
+    unit_429 = bool(facts.decky_unit_is_429)
 
     if incomplete and remaining == 0:
         found.append(
             Diagnosis(
-                title="Incomplete Decky install and GitHub rate limit",
-                summary=(
-                    "FACT: PluginLoader is missing. FACT: GitHub API remaining is 0. "
-                    "LIKELY CAUSE: the installer could not download PluginLoader because the unauthenticated "
-                    "GitHub API quota was exhausted (common on CGNAT)."
-                ),
-                recommendation=(
-                    "Wait for the quota reset or switch networks, then reinstall with the official Decky installer. "
-                    "Do not delete ~/homebrew/plugins unless you intend to. DeckDoctor will not reinstall Decky."
-                ),
+                title=t("diag.incomplete_rate.title"),
+                summary=t("diag.incomplete_rate.summary"),
+                recommendation=t("diag.incomplete_rate.rec"),
                 related_checks=["DECKY-INSTALL", "NET-GITHUB"],
                 confidence=Confidence.HIGH,
                 fact_kind="likely",
@@ -40,12 +38,9 @@ def correlate(results: list[CheckResult], facts: dict) -> list[Diagnosis]:
     elif unit_429:
         found.append(
             Diagnosis(
-                title="systemd unit replaced by GitHub 429 page",
-                summary=(
-                    "FACT: plugin_loader.service contains GitHub's rate-limit HTML. "
-                    "The installer saved an API error as a unit file, so Decky cannot start."
-                ),
-                recommendation="Reinstall Decky after GitHub API quota recovers. Do not hand-edit a 429 page into a valid unit unless you know systemd.",
+                title=t("diag.unit_429.title"),
+                summary=t("diag.unit_429.summary"),
+                recommendation=t("diag.unit_429.rec"),
                 related_checks=["DECKY-INSTALL", "DECKY-SERVICE"],
                 confidence=Confidence.HIGH,
                 fact_kind="fact",
@@ -55,9 +50,9 @@ def correlate(results: list[CheckResult], facts: dict) -> list[Diagnosis]:
     elif incomplete:
         found.append(
             Diagnosis(
-                title="Incomplete Decky installation",
-                summary="FACT: the homebrew tree exists but PluginLoader was never downloaded.",
-                recommendation="Re-run the official installer. If it failed before, check NET-GITHUB first.",
+                title=t("diag.incomplete.title"),
+                summary=t("diag.incomplete.summary"),
+                recommendation=t("diag.incomplete.rec"),
                 related_checks=["DECKY-INSTALL"],
                 confidence=Confidence.HIGH,
                 fact_kind="fact",
@@ -65,22 +60,19 @@ def correlate(results: list[CheckResult], facts: dict) -> list[Diagnosis]:
             )
         )
 
-    backend_ok = facts.get("plugin_loader_present") and facts.get("decky_service_active") == "active"
-    cef_ok = bool(facts.get("cef_json_ok"))
-    port_conflict = bool(facts.get("port_8080_conflict"))
-    steam_beta = facts.get("steam_channel") == "beta"
+    backend_ok = facts.plugin_loader_present and facts.decky_service_active == "active"
+    cef_ok = bool(facts.cef_json_ok)
+    port_conflict = bool(facts.port_8080_conflict)
+    steam_beta = facts.steam_channel == "beta"
     logs = by.get("DECKY-LOGS")
-    log_sigs = set(facts.get("decky_log_signatures") or [])
+    log_sigs = set(facts.decky_log_signatures)
 
-    if port_conflict and facts.get("plugin_loader_present"):
+    if port_conflict and facts.plugin_loader_present:
         found.append(
             Diagnosis(
-                title="Decky cannot inject: port 8080 conflict",
-                summary=(
-                    "FACT: PluginLoader is present but port 8080 is not Steam's CEF debugger. "
-                    "Decky injects through localhost:8080; another process is in the way."
-                ),
-                recommendation="Move the conflicting app (Syncthing should use 8384). DeckDoctor will not kill processes.",
+                title=t("diag.port.title"),
+                summary=t("diag.port.summary"),
+                recommendation=t("diag.port.rec"),
                 related_checks=["DECKY-PORTS", "DECKY-FRONTEND"],
                 confidence=Confidence.HIGH,
                 fact_kind="fact",
@@ -96,15 +88,9 @@ def correlate(results: list[CheckResult], facts: dict) -> list[Diagnosis]:
     ):
         found.append(
             Diagnosis(
-                title="Backend healthy; frontend may be a Steam client issue",
-                summary=(
-                    "FACT: PluginLoader is present and plugin_loader.service is active. "
-                    "FACT: localhost:8080/json looks like Steam CEF. "
-                    "FACT: Steam client channel appears to be Beta. "
-                    "LIKELY CAUSE (medium): the Steam client/frontend, not a broken Decky install. "
-                    "DeckDoctor cannot see whether the QAM tab is actually missing."
-                ),
-                recommendation="Contrast with Steam Deck Stable, update Decky, and if React error #130 persists, disable plugins from Desktop Mode.",
+                title=t("diag.steam_beta.title"),
+                summary=t("diag.steam_beta.summary"),
+                recommendation=t("diag.steam_beta.rec"),
                 related_checks=["DECKY-INSTALL", "DECKY-SERVICE", "DECKY-FRONTEND", "STEAM-CLIENT"],
                 confidence=Confidence.MEDIUM,
                 fact_kind="likely",
@@ -112,16 +98,12 @@ def correlate(results: list[CheckResult], facts: dict) -> list[Diagnosis]:
             )
         )
 
-    if facts.get("autoflatpaks_installed") and facts.get("autoflatpaks_remote_list_failed"):
+    if facts.autoflatpaks_installed and facts.autoflatpaks_remote_list_failed:
         found.append(
             Diagnosis(
-                title="AutoFlatpaks is fine; Flatpak remote listing is not",
-                summary=(
-                    "FACT: AutoFlatpaks is installed. FACT: `flatpak` works. "
-                    "FACT: `flatpak remote-ls` failed. "
-                    "The plugin cannot display a remote package list because Flatpak cannot produce one."
-                ),
-                recommendation="Fix or remove the failing Flatpak remote yourself. DeckDoctor will not delete remotes.",
+                title=t("diag.autoflatpaks.title"),
+                summary=t("diag.autoflatpaks.summary"),
+                recommendation=t("diag.autoflatpaks.rec"),
                 related_checks=["AUTOFLATPAKS", "FP-BASIC", "FP-UPDATES"],
                 confidence=Confidence.HIGH,
                 fact_kind="fact",

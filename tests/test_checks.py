@@ -3,13 +3,11 @@ from __future__ import annotations
 from pathlib import Path
 
 from deckdoctor.command import CommandResult
-from deckdoctor.correlator import correlate
-from deckdoctor.http import FakeHttpClient, HttpResult
+from deckdoctor.http import HttpResult
 from deckdoctor.models import Status
 from deckdoctor.runner import diagnose
 from tests.conftest import (
     RATE_ZERO,
-    cmd,
     healthy_commands,
     healthy_http,
     make_ctx,
@@ -210,3 +208,48 @@ def test_no_network_skips(tmp_path: Path) -> None:
     skipped = {r.check_id: r for r in report.results if r.status == Status.SKIPPED}
     assert "NET-GITHUB" in skipped
     assert "NET-STORE" in skipped
+    assert "SYS-OS-UPDATER" in skipped
+    assert "FP-UPDATES" in skipped
+    auto = next(r for r in report.results if r.check_id == "AUTOFLATPAKS")
+    assert auto.status == Status.SKIPPED
+    assert "not installed" in auto.finding.lower() or "no está" in auto.finding.lower()
+
+
+def test_full_root_does_not_fail_when_home_has_space(tmp_path: Path) -> None:
+    import shutil
+
+    from tests.conftest import plenty_disk, tiny_disk
+
+    def mixed(path: Path) -> shutil._ntuple_diskusage:
+        if str(path) in {"/", ""}:
+            return tiny_disk(path)
+        return plenty_disk(path)
+
+    ctx = make_ctx(tmp_path, disk=mixed)
+    report = diagnose(ctx)
+    disk = next(r for r in report.results if r.check_id == "SYS-DISK")
+    assert disk.status == Status.PASS
+
+
+def test_journalctl_denied_is_skipped(tmp_path: Path) -> None:
+    commands = healthy_commands()
+    journal = (
+        "journalctl",
+        "-b0",
+        "-u",
+        "plugin_loader.service",
+        "-n",
+        "200",
+        "--no-pager",
+    )
+    commands[journal] = CommandResult(journal, 1, "", "Permission denied\n")
+    ctx = make_ctx(tmp_path, commands=commands)
+    report = diagnose(ctx)
+    logs = next(r for r in report.results if r.check_id == "DECKY-LOGS")
+    assert logs.status == Status.SKIPPED
+
+
+def test_json_facts_omit_raw_logs(tmp_path: Path) -> None:
+    ctx = make_ctx(tmp_path)
+    report = diagnose(ctx)
+    assert "decky_log_text" not in report.facts

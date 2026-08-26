@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "deckdoctor"
-version = "0.1.0"
+version = "0.2.0"
 description = "Read-only diagnostic CLI for SteamOS, Decky Loader, plugins, and Flatpak"
 readme = "README.md"
 license = { text = "MIT" }
@@ -23,7 +23,7 @@ classifiers = [
 dependencies = []
 
 [project.optional-dependencies]
-dev = ["pytest>=8.0", "pyinstaller>=6.0"]
+dev = ["pytest>=8.0", "pyinstaller>=6.0", "ruff>=0.6", "mypy>=1.11"]
 
 [project.scripts]
 deckdoctor = "deckdoctor.cli:main"
@@ -40,3 +40,19 @@ where = ["src"]
 testpaths = ["tests"]
 pythonpath = ["src"]
 addopts = "-q"
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP"]
+ignore = ["E501"]
+
+[tool.mypy]
+python_version = "3.11"
+mypy_path = "src"
+packages = ["deckdoctor"]
+strict = true
+warn_return_any = false

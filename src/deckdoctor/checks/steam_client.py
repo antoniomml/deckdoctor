@@ -73,8 +73,8 @@ def run(ctx: DiagnosticContext) -> CheckResult:
         channel = "beta"
         evidence.append(f"present {beta_file}")
 
-    ctx.facts["steam_version"] = version
-    ctx.facts["steam_channel"] = channel
+    ctx.facts.steam_version = version
+    ctx.facts.steam_channel = channel
 
     if version is None and channel == "unknown" and not ctx.exists(steam):
         return result(

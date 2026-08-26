@@ -36,14 +36,14 @@ def run(ctx: DiagnosticContext) -> CheckResult:
         ctx.home / ".var" / "app" / "com.valvesoftware.Steam" / "data" / "Steam" / ".cef-enable-remote-debugging"
     )
     cef_enabled = ctx.exists(cef_file) or ctx.exists(flatpak_cef)
-    ctx.facts["cef_enable_file"] = cef_enabled
+    ctx.facts.cef_enable_file = cef_enabled
     evidence = [
         f"{cef_file}: {'present' if ctx.exists(cef_file) else 'missing'}",
     ]
     if ctx.exists(flatpak_cef):
         evidence.append(f"flatpak steam cef file present: {flatpak_cef}")
 
-    if ctx.facts.get("decky_installed") is False:
+    if ctx.facts.decky_installed is False:
         return result(
             ID,
             TITLE,
@@ -74,9 +74,9 @@ def run(ctx: DiagnosticContext) -> CheckResult:
     if http.body:
         evidence.append(http.body[:300])
 
-    conflict = bool(ctx.facts.get("port_8080_conflict"))
+    conflict = bool(ctx.facts.port_8080_conflict)
     if http.status == 404 or (http.body and "page not found" in http.body.lower()):
-        ctx.facts["cef_json_ok"] = False
+        ctx.facts.cef_json_ok = False
         return result(
             ID,
             TITLE,
@@ -107,7 +107,7 @@ def run(ctx: DiagnosticContext) -> CheckResult:
         )
 
     if http.error and not http.ok:
-        ctx.facts["cef_json_ok"] = False
+        ctx.facts.cef_json_ok = False
         return result(
             ID,
             TITLE,
@@ -124,9 +124,9 @@ def run(ctx: DiagnosticContext) -> CheckResult:
         )
 
     looks = _json_looks_like_cef(http.body)
-    ctx.facts["cef_json_ok"] = looks
-    backend_ok = ctx.facts.get("decky_service_active") == "active" and ctx.facts.get("plugin_loader_present")
-    steam_beta = ctx.facts.get("steam_channel") == "beta"
+    ctx.facts.cef_json_ok = looks
+    backend_ok = ctx.facts.decky_service_active == "active" and ctx.facts.plugin_loader_present
+    steam_beta = ctx.facts.steam_channel == "beta"
 
     if looks and backend_ok and steam_beta:
         return result(

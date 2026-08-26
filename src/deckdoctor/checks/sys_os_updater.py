@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from deckdoctor.checks._util import first_line, result
+from deckdoctor.command import CommandResult
 from deckdoctor.context import DiagnosticContext
 from deckdoctor.models import CheckResult, EvidenceSource, Severity, Status
 
@@ -31,12 +32,12 @@ _ERROR_MARKERS = (
 )
 
 
-def _combined(proc) -> str:
+def _combined(proc: CommandResult) -> str:
     return f"{proc.stdout}\n{proc.stderr}".lower()
 
 
 def run(ctx: DiagnosticContext) -> CheckResult:
-    if ctx.facts.get("is_steamos") is False:
+    if ctx.facts.is_steamos is False:
         return result(
             ID,
             TITLE,
@@ -65,7 +66,7 @@ def run(ctx: DiagnosticContext) -> CheckResult:
         attempts.append(f"{' '.join(argv)} → exit {proc.exit_code}: {summary}")
 
         if proc.timed_out:
-            ctx.facts["os_updater"] = "timeout"
+            ctx.facts.os_updater = "timeout"
             return result(
                 ID,
                 TITLE,
@@ -82,7 +83,7 @@ def run(ctx: DiagnosticContext) -> CheckResult:
             )
 
         if any(m in blob for m in _ERROR_MARKERS) and not proc.ok:
-            ctx.facts["os_updater"] = "error"
+            ctx.facts.os_updater = "error"
             return result(
                 ID,
                 TITLE,
@@ -96,7 +97,7 @@ def run(ctx: DiagnosticContext) -> CheckResult:
             )
 
         if any(m in blob for m in _UPDATE_MARKERS) or (proc.ok and "update available" in blob):
-            ctx.facts["os_updater"] = "update_available"
+            ctx.facts.os_updater = "update_available"
             return result(
                 ID,
                 TITLE,
@@ -113,7 +114,7 @@ def run(ctx: DiagnosticContext) -> CheckResult:
         if proc.ok and (any(m in blob for m in _UP_TO_DATE_MARKERS) or not blob.strip()):
             # empty successful check is treated cautiously as unknown unless markers match
             if any(m in blob for m in _UP_TO_DATE_MARKERS):
-                ctx.facts["os_updater"] = "up_to_date"
+                ctx.facts.os_updater = "up_to_date"
                 return result(
                     ID,
                     TITLE,
@@ -126,7 +127,7 @@ def run(ctx: DiagnosticContext) -> CheckResult:
                 )
 
         if not proc.ok:
-            ctx.facts["os_updater"] = "error"
+            ctx.facts.os_updater = "error"
             return result(
                 ID,
                 TITLE,
@@ -149,7 +150,7 @@ def run(ctx: DiagnosticContext) -> CheckResult:
             source=EvidenceSource.OS_METADATA,
         )
 
-    ctx.facts["os_updater"] = "unknown"
+    ctx.facts.os_updater = "unknown"
     return result(
         ID,
         TITLE,

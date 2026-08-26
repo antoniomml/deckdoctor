@@ -23,6 +23,10 @@ deckdoctor diagnose        # run checks, print human summary
 deckdoctor report          # diagnose + write deckdoctor-report.md
 deckdoctor --json          # machine-readable result on stdout
 deckdoctor --no-network    # skip checks that need the internet
+deckdoctor --ascii         # ASCII status marks
+deckdoctor --only ID,ID    # run a subset of checks
+deckdoctor --timeout N     # global deadline (seconds; 0 disables)
+deckdoctor --lang es|en
 deckdoctor --output PATH   # report path (default: ./deckdoctor-report.md)
 deckdoctor --version
 ```
@@ -83,6 +87,7 @@ class Check(Protocol):
 ```
 
 Checks must not catch-all and return PASS. Unknown command, missing file, or denied journal → `UNKNOWN` or `SKIPPED`.
+Observations are stored on a typed `Facts` dataclass (`ctx.facts.plugin_loader_present`), not a free-form dict.
 
 ### 4.4 CommandRunner
 

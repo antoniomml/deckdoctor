@@ -56,7 +56,7 @@ def collect_plugins(ctx: DiagnosticContext) -> list[dict[str, Any]]:
 
 
 def run(ctx: DiagnosticContext) -> CheckResult:
-    if ctx.facts.get("decky_installed") is False:
+    if ctx.facts.decky_installed is False:
         return result(
             ID,
             TITLE,
@@ -66,7 +66,7 @@ def run(ctx: DiagnosticContext) -> CheckResult:
         )
 
     plugins = collect_plugins(ctx)
-    ctx.facts["plugins"] = plugins
+    ctx.facts.plugins = plugins
     names = [f"{p['name']} {p['version']}" for p in plugins]
     if not ctx.exists(ctx.plugins_dir):
         return result(

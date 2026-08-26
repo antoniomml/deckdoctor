@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from deckdoctor.checks._util import relevant_log_lines, result
 from deckdoctor.context import DiagnosticContext
-from deckdoctor.models import CheckResult, EvidenceSource, Severity, Status
+from deckdoctor.models import CheckResult, EvidenceSource, Status
 
 ID = "DECKY-LOGS"
 TITLE = "Decky backend logs"
@@ -11,7 +11,7 @@ JOURNAL_CMD = ["journalctl", "-b0", "-u", "plugin_loader.service", "-n", "200", 
 
 
 def run(ctx: DiagnosticContext) -> CheckResult:
-    if ctx.facts.get("decky_installed") is False:
+    if ctx.facts.decky_installed is False:
         return result(
             ID,
             TITLE,
@@ -58,8 +58,8 @@ def run(ctx: DiagnosticContext) -> CheckResult:
         )
 
     lines = relevant_log_lines(proc.stdout, limit=80)
-    ctx.facts["decky_log_hits"] = lines[:20]
-    ctx.facts["decky_log_text"] = proc.stdout[-8000:]
+    ctx.facts.decky_log_hits = lines[:20]
+    ctx.facts.decky_log_text = proc.stdout[-8000:]
 
     signatures = {
         "Failed Downloading Remote Binaries": "remote_binaries",
@@ -72,7 +72,7 @@ def run(ctx: DiagnosticContext) -> CheckResult:
         "Traceback": "traceback",
     }
     found = [name for needle, name in signatures.items() if needle.lower() in proc.stdout.lower()]
-    ctx.facts["decky_log_signatures"] = found
+    ctx.facts.decky_log_signatures = found
 
     if not lines:
         return result(
@@ -81,7 +81,7 @@ def run(ctx: DiagnosticContext) -> CheckResult:
             Status.PASS,
             "No recent backend ERROR/CRITICAL signatures in the current boot journal",
             explanation="Warnings alone are not treated as failures. Older boots are ignored (`-b0`).",
-            evidence=[f"journal lines scanned from plugin_loader.service (boot 0)"],
+            evidence=["journal lines scanned from plugin_loader.service (boot 0)"],
             source=EvidenceSource.JOURNAL,
         )
 
