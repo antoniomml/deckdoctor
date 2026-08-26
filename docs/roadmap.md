@@ -30,10 +30,14 @@ Shipped in 0.1: core types, MVP checks, human CLI + `--json` + `report`, pytest 
 
 Also in 0.3: Spanish findings (not just chrome), compact CLI, `--verbose`, `deckdoctor checks`, hostname `steamdeck` no longer redacted, updater “no update available” false positive fixed, SteamOS checks skip unless the OS is actually SteamOS.
 
+## 0.3.1 — Public landing
+
+English README aimed at Deck users, not developers. Compact CLI uses emoji marks and plain-language labels. Spanish remains available with `--lang es`.
+
 ## Later / maybe never
 
 - Decky plugin frontend that calls the same core (useful, but the CLI remains the source of truth)
-- Hardware module (that is DeckDoc’s job)
+- Hardware module
 - Proton/game diagnosis
 - Hardcoded Steam×Decky incompatibility matrix
 - Telemetry, auto-upload, cloud accounts

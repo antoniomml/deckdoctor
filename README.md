@@ -6,101 +6,103 @@
 
 **Your Steam Deck, in plain language.**
 
-Decky se ha caído, las apps no actualizan, SteamOS dice una cosa y el Deck hace otra. DeckDoctor mira **SteamOS, Decky, los plugins y Flatpak** y te lo cuenta en claro: qué ha visto, por qué importa y qué puedes hacer.
+Decky is down. Apps will not update. SteamOS says one thing and the Deck does another. DeckDoctor looks at **SteamOS, Decky, plugins, and Flatpak**, then tells you what it saw, why it matters, and what is safe to do next.
 
-No toca nada al mirar. Si hay un arreglo seguro, te enseña el plan. Solo se aplica si tú escribes `--yes`.
+It does not change anything while it looks. If a safe fix exists, it prints a plan. Nothing is applied until you type `--yes`.
 
 ---
 
-## En el Deck
+## On the Deck
 
-Abre el **modo escritorio** (o una terminal por SSH) y pega esto:
+Open **Desktop Mode** (or an SSH terminal) and paste:
 
 ```bash
 curl -L https://raw.githubusercontent.com/antoniomml/deckdoctor/main/scripts/install.sh | sh
-deckdoctor --lang es
+deckdoctor
 ```
 
-La primera vez tarda unos segundos. Después, cuando quieras, escribe `deckdoctor`.
+The first launch takes a few seconds. After that, just run `deckdoctor`.
+
+Spanish: `deckdoctor --lang es`.
 
 ---
 
-## Cómo se ve
+## What it looks like
 
-Esto es la salida real de DeckDoctor (no un mock):
+When something is wrong:
 
 ```text
-🩺  DeckDoctor 0.3.0
-    SteamOS 3.8.14 (build 20260624.1, variant steamdeck) · Instalado v3.2.6 (stable)
+🩺  DeckDoctor 0.3.1
+    SteamOS 3.8.14 (build 20260624.1, variant steamdeck) · Installed v3.2.6 (stable)
 
-    2 problema(s)
+    2 problem(s)
 
-❗  Problemas
-  ❌  Servicio de Decky  ·  grave
-      plugin_loader.service no está en ejecución
-      La unidad existe pero está inactiva. Sin este servicio Decky no puede inyectarse en Steam.
-      → `deckdoctor fix` puede arrancarlo (puede hacer falta root). El diagnóstico nunca lo arranca.
+❗  Problems
+  ❌  Decky service  ·  serious
+      plugin_loader.service is not running
+      The unit exists but is inactive. Decky cannot inject into Steam without this service.
+      → `deckdoctor fix` can start it (may need root). DeckDoctor diagnose never starts it.
 
-  ⚠️  Actualizaciones Flatpak  ·  aviso
-      2 actualización(es) Flatpak disponible(s)
-      Solo se listan. El diagnóstico no aplicó actualizaciones.
-      → `deckdoctor fix` puede ejecutar `flatpak update -y` tras mostrar el plan. O actualiza desde Discover.
+  ⚠️  Flatpak updates  ·  watch
+      2 Flatpak update(s) available
+      Listed only. Diagnose did not apply updates.
+      → `deckdoctor fix` can run `flatpak update -y` after showing the plan. Or update from Discover when convenient.
 
 
-✅  19 bien   ❌  1   ⚠️  1
+✅  19 ok   ❌  1   ⚠️  1
 
-👉  Qué puedes hacer
-    📄  deckdoctor report     guarda un informe para pegar en Discord
-    🔍  deckdoctor -v         ver todas las comprobaciones
-    🔧  deckdoctor fix        2 arreglo(s) seguro(s) (enseña el plan, no cambia nada aún)
-    Mirar no cambia nada. Los arreglos solo se aplican con --yes.
+👉  What you can do
+    📄  deckdoctor report     save a report you can paste on Discord
+    🔍  deckdoctor -v         show every check
+    🔧  deckdoctor fix        2 safe fix(es) ready (shows a plan, changes nothing yet)
+    Looking around never changes anything. Fixes only run with --yes.
 ```
 
-Si todo va bien, ves **Todo en orden** y un ✅.
-
-¿Prefieres inglés? `deckdoctor --lang en` (o deja que use el idioma del sistema).
+When everything is fine, you get **All clear** and a ✅.
 
 ---
 
-## Los tres comandos que importan
+## The commands that matter
 
-| Lo que quieres | Lo que escribes |
+| You want to | You type |
 |---|---|
-| Que mire y te lo explique | `deckdoctor` |
-| Un informe para pegar en Discord | `deckdoctor report` |
-| Ver el plan de arreglos (sin aplicar nada) | `deckdoctor fix` |
-| Aplicar ese plan | `deckdoctor fix --yes` |
+| See what is going on | `deckdoctor` |
+| Save a report for Discord | `deckdoctor report` |
+| Preview safe fixes (changes nothing) | `deckdoctor fix` |
+| Apply that plan | `deckdoctor fix --yes` |
 
-`deckdoctor -v` enseña cada comprobación, también las que están bien.
-
----
-
-## Qué puede arreglar (si se lo pides)
-
-Solo cosas concretas y reversibles:
-
-- Arrancar Decky si está instalado pero parado
-- Actualizar las apps de Flatpak
-- Crear el archivo que Decky necesita para aparecer en Steam
-- Marcar PluginLoader como ejecutable
-
-Nunca reinicia el Deck. Nunca borra apps. Nunca escribe la contraseña por ti.
+`deckdoctor -v` shows every check, including the ones that passed.
 
 ---
 
-## Dónde corre
+## What it can fix (if you ask)
 
-Está hecho para el **Steam Deck**. También arranca en otros Linux de mano; ahí hace lo que puede.
+Only a few concrete, reversible things:
+
+- Start Decky when it is installed but not running
+- Update Flatpak apps
+- Create the file Decky needs to show up in Steam
+- Make PluginLoader executable
+
+It will not reboot the Deck, uninstall apps, or type your password for you.
 
 ---
 
-## Privacidad
+## Where it runs
 
-Todo ocurre en tu máquina. No hay cuenta, no hay nube, no se sube nada.
+Built for the **Steam Deck** (x86_64 Linux). It also starts on other handheld Linux images and does what it can there.
 
-A veces consulta GitHub o la tienda de Decky para comparar versiones. Si no quieres red: `deckdoctor --no-network`.
+It is not a Windows or macOS app.
 
-El informe intenta ocultar tu usuario, IPs y tokens. Léelo antes de pegarlo.
+---
+
+## Privacy
+
+Everything stays on your machine. No account, no cloud, nothing uploaded.
+
+It may contact GitHub or the Decky store to compare versions. Stay offline with `deckdoctor --no-network`.
+
+Reports try to hide your username, IPs, and tokens. Read the file before you paste it.
 
 ---
 
@@ -111,7 +113,7 @@ MIT. See [LICENSE](LICENSE).
 ---
 
 <details>
-<summary>Si programas</summary>
+<summary>For developers</summary>
 
 ```bash
 python3 -m venv .venv
