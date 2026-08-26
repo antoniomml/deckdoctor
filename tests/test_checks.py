@@ -596,6 +596,36 @@ def test_cef_forward_on_wildcard_is_a_warning(tmp_path: Path) -> None:
     assert "8081" in ports.finding or "CEF" in ports.finding or "forward" in ports.finding.lower()
 
 
+def test_cef_forward_with_decky_setting_and_css_loader_is_a_note(tmp_path: Path) -> None:
+    home = make_home(tmp_path)
+    write_plugin(home, "CSSLoader", "CSS Loader", "1.0.0")
+    (home / "homebrew" / "settings" / "loader.json").write_text(
+        '{"branch": 0, "cef_forward": true}\n', encoding="utf-8"
+    )
+    commands = healthy_commands()
+    commands[("ss", "-ltnp")] = CommandResult(
+        ("ss", "-ltnp"),
+        0,
+        "LISTEN 0 10 127.0.0.1:8080 0.0.0.0:* users:((\"steamwebhelper\",pid=10,fd=8))\n"
+        "LISTEN 0 128 127.0.0.1:1337 0.0.0.0:* users:((\"PluginLoader\",pid=11,fd=3))\n"
+        "LISTEN 0 128 0.0.0.0:8081 0.0.0.0:* users:((\"steam-web-debug-portforward\",pid=12,fd=4))\n",
+        "",
+    )
+    ctx = make_ctx(tmp_path, home=home, commands=commands)
+    report = diagnose(ctx)
+    ports = next(r for r in report.results if r.check_id == "DECKY-PORTS")
+    assert ports.status == Status.INFO
+    assert ports.extra.get("compact_note") is True
+    assert "cef_forward" in ports.finding
+    assert "CSS Loader" in ports.finding or "CSSLoader" in ports.finding
+    assert ports not in report.problems
+    from deckdoctor.renderer import render_cli
+
+    text = render_cli(report)
+    assert "cef_forward" in text
+    assert "❌  Decky ports" not in text
+
+
 def test_disk_includes_steam_library_and_skips_appimage_fuse(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

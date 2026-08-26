@@ -42,6 +42,10 @@ A broken Flatpak remote (expired GPG) must not hide Flathub updates or AutoFlatp
 
 English unless `--lang es` or `DECKDOCTOR_LANG`. Compact diagnose drops repeated explanations, FACT dumps, and severity labels; inferred (likely) stories stay. `deckdoctor fix` prints the plan and asks `y/N` on a TTY; `-y`/`--yes` skips the question. Non-TTY still needs `-y`.
 
+## 0.3.5 — Who opened 8081
+
+DECKY-PORTS names the process on 8081 and reads Decky `cef_forward`. If the setting is on (CSS Loader is named when present), it is an INFO note, not a warning: using themes does not need LAN exposure. If the setting is off, it stays a warning and calls out a leftover unit.
+
 ## 0.3.1 — Public landing
 
 English README aimed at Deck users, not developers. Compact CLI uses emoji marks and plain-language labels. Spanish is opt-in (`--lang es` or `DECKDOCTOR_LANG`).

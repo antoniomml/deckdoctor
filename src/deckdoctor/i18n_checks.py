@@ -184,12 +184,30 @@ CHECK_EN: dict[str, str] = {
     "decky.ports.fail.rec": "Inspect listeners; do not kill processes from DeckDoctor.",
     "decky.ports.ok.explain": "8080 belongs to Steam CEF; 1337 belongs to Decky. No process was changed.",
     "decky.ports.cef_forward": "CEF debugger is forwarded on port 8081 beyond localhost",
+    "decky.ports.cef_forward.named": "CEF debugger on 8081 is open to the LAN ({owner})",
+    "decky.ports.cef_forward.css": "CEF on 8081 is open to the LAN ({owner}); {name} is installed — using themes does not need this",
     "decky.ports.cef_forward.explain": (
         "steam-web-debug-portforward (or equivalent) is listening on 8081 on every interface. "
         "Anyone on the same network can attach to Steam's CEF debugger."
     ),
     "decky.ports.cef_forward.rec": (
-        "If you did not turn this on, disable cef_forward in Decky and stop steam-web-debug-portforward.service."
+        "If you did not turn this on, disable cef_forward in Decky Developer settings "
+        "and stop steam-web-debug-portforward.service."
+    ),
+    "decky.ports.cef_forward.leftover.rec": (
+        "Decky cef_forward is off, so this looks leftover. Stop steam-web-debug-portforward.service "
+        "if you did not want 8081 on the LAN."
+    ),
+    "decky.ports.cef_forward.expected": "8081 is open because Decky cef_forward is on{why}",
+    "decky.ports.cef_forward.why.setting": "",
+    "decky.ports.cef_forward.why.css": " ({name} is installed; using themes does not need this)",
+    "decky.ports.cef_forward.expected.explain": (
+        "Decky's own toggle re-exports Steam's debugger to the LAN. "
+        "Local Decky injection and CSS themes use localhost:8080, not 8081."
+    ),
+    "decky.ports.cef_forward.expected.rec": (
+        "Leave it if you inspect Steam from another computer. "
+        "Otherwise turn off cef_forward in Decky Developer settings."
     ),
     "decky.front.no_cef": "CEF remote debugging is not enabled",
     "decky.front.no_cef.explain": (
@@ -525,12 +543,30 @@ CHECK_ES: dict[str, str] = {
     "decky.ports.fail.rec": "Inspecciona quién escucha; no mates procesos desde DeckDoctor.",
     "decky.ports.ok.explain": "8080 es CEF de Steam; 1337 es Decky. No se cambió ningún proceso.",
     "decky.ports.cef_forward": "El depurador CEF está reenviado en el puerto 8081 más allá de localhost",
+    "decky.ports.cef_forward.named": "El depurador CEF en 8081 está abierto a la LAN ({owner})",
+    "decky.ports.cef_forward.css": "CEF en 8081 está abierto a la LAN ({owner}); {name} está instalado — usar temas no lo necesita",
     "decky.ports.cef_forward.explain": (
         "steam-web-debug-portforward (o equivalente) escucha en 8081 en todas las interfaces. "
         "Cualquiera en la misma red puede engancharse al depurador CEF de Steam."
     ),
     "decky.ports.cef_forward.rec": (
-        "Si no lo activaste tú, desactiva cef_forward en Decky y para steam-web-debug-portforward.service."
+        "Si no lo activaste tú, desactiva cef_forward en los ajustes de desarrollador de Decky "
+        "y para steam-web-debug-portforward.service."
+    ),
+    "decky.ports.cef_forward.leftover.rec": (
+        "cef_forward de Decky está apagado, así que parece un resto. Para steam-web-debug-portforward.service "
+        "si no querías el 8081 en la LAN."
+    ),
+    "decky.ports.cef_forward.expected": "El 8081 está abierto porque Decky tiene cef_forward activado{why}",
+    "decky.ports.cef_forward.why.setting": "",
+    "decky.ports.cef_forward.why.css": " ({name} está instalado; usar temas no lo necesita)",
+    "decky.ports.cef_forward.expected.explain": (
+        "El interruptor de Decky reexporta el depurador de Steam a la LAN. "
+        "La inyección local de Decky y los temas CSS usan localhost:8080, no el 8081."
+    ),
+    "decky.ports.cef_forward.expected.rec": (
+        "Déjalo si inspeccionas Steam desde otro ordenador. "
+        "Si no, apaga cef_forward en los ajustes de desarrollador de Decky."
     ),
     "decky.front.no_cef": "El depurador remoto CEF no está activado",
     "decky.front.no_cef.explain": (

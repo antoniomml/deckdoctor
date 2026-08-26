@@ -63,6 +63,9 @@ class Facts:
     cef_enable_file: bool | None = None
     cef_json_ok: bool | None = None
     cef_excerpt: list[str] = field(default_factory=list)
+    cef_forward_exposed: bool = False
+    cef_forward_setting: bool | None = None
+    cef_forward_owner: str | None = None
     plugins: list[dict[str, Any]] = field(default_factory=list)
     store_plugins: list[dict[str, str]] = field(default_factory=list)
     store_updates: list[str] = field(default_factory=list)

@@ -7,7 +7,7 @@ import textwrap
 from deckdoctor.checks import ALL_CHECKS
 from deckdoctor.checks._util import format_bytes
 from deckdoctor.i18n import translate
-from deckdoctor.models import Diagnosis, FixPlan, FixResult, Report, Severity, Status
+from deckdoctor.models import CheckResult, Diagnosis, FixPlan, FixResult, Report, Severity, Status
 
 _STATUS_MARK = {
     Status.PASS: "✅",
@@ -238,6 +238,10 @@ def _compact_diagnoses(report: Report) -> list[Diagnosis]:
     return [d for d in report.diagnoses if d.fact_kind == "likely"]
 
 
+def _compact_notes(report: Report) -> list[CheckResult]:
+    return [r for r in report.results if r.status == Status.INFO and r.extra.get("compact_note")]
+
+
 def _join(lines: list[str]) -> str:
     text = "\n".join(lines).rstrip() + "\n"
     while "\n\n\n" in text:
@@ -317,13 +321,22 @@ def _render_compact(report: Report, *, plans: list[FixPlan] | None) -> str:
     lines.append("")
 
     stories = _compact_diagnoses(report)
+    notes = _compact_notes(report)
     problems = report.problems
-    if not problems and not stories:
+    if not problems and not stories and not notes:
         ok = "✅  " if not report.ascii_mode else ""
         lines.append(_paint(f"{ok}{translate(locale, 'ui.no_problems')}", _GREEN + _BOLD if color else "", on=color))
         lines.extend(_footer(report, plans, color=color))
         return _join(lines)
 
+    if notes:
+        mark = "i" if report.ascii_mode else "ℹ️"
+        for item in notes:
+            lines.append(_paint(f"{mark}  {item.title}", _CYAN + _BOLD if color else "", on=color))
+            lines.extend(_fill(item.finding, indent="    "))
+            if item.recommendation:
+                lines.extend(_rec_lines(f"{_arrow(report.ascii_mode)} {item.recommendation}", indent="    ", color=color))
+            lines.append("")
     if stories:
         lines.extend(_diagnosis_block(report, stories, heading=False))
     if problems:

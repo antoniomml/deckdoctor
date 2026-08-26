@@ -32,7 +32,7 @@ The UI is English. Use `--lang es` only if you want Spanish.
 When something is wrong:
 
 ```text
-🩺  DeckDoctor 0.3.4
+🩺  DeckDoctor 0.3.5
     SteamOS 3.8.14 (build 20260624.1, variant steamdeck) · Decky v3.2.6 (stable)
     Internal  81.8 GB free of 224.0 GB
     microSD   292.4 GB free of 469.0 GB

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import re
 from pathlib import Path
 
@@ -15,6 +16,8 @@ DECKY_PORT = 1337
 CEF_FORWARD_PORT = 8081
 CEF_EXPECTED = ("steamwebhelper", "steam")
 DECKY_EXPECTED = ("pluginloader", "python")
+CEF_FORWARD_UNIT = "steam-web-debug-portforward.service"
+_CSS_HINTS = ("cssloader", "css-loader", "css loader", "sdh-cssloader", "decky-cssloader")
 
 
 def _parse_ss(text: str) -> dict[int, list[str | None]]:
@@ -70,6 +73,56 @@ def _line_exposes(line: str, port: int) -> bool:
     if f"127.0.0.1:{port}" in line or f"[::1]:{port}" in line:
         return False
     return True
+
+
+def _cef_forward_setting(ctx: DiagnosticContext) -> bool | None:
+    settings = ctx.settings_dir
+    paths = [settings / "loader.json"]
+    if ctx.exists(settings):
+        try:
+            paths.extend(sorted(p for p in settings.glob("*.json") if p.name != "loader.json"))
+        except OSError:
+            pass
+    for path in paths:
+        text = ctx.read_text(path)
+        if not text:
+            continue
+        try:
+            data = json.loads(text)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(data, dict) and "cef_forward" in data:
+            return bool(data["cef_forward"])
+    return None
+
+
+def _css_loader_names(ctx: DiagnosticContext) -> list[str]:
+    names: list[str] = []
+    plugins = list(ctx.facts.plugins)
+    if not plugins and ctx.exists(ctx.plugins_dir):
+        try:
+            for entry in ctx.plugins_dir.iterdir():
+                if entry.is_dir():
+                    plugins.append({"name": entry.name, "dir": entry.name})
+        except OSError:
+            pass
+    for plugin in plugins:
+        blob = f"{plugin.get('name', '')} {plugin.get('dir', '')}".lower()
+        if any(hint in blob for hint in _CSS_HINTS):
+            names.append(str(plugin.get("name") or plugin.get("dir")))
+    return names
+
+
+def _unit_state(ctx: DiagnosticContext, unit: str) -> tuple[str, str]:
+    active = ctx.run(["systemctl", "is-active", unit])
+    enabled = ctx.run(["systemctl", "is-enabled", unit])
+    active_s = "unknown"
+    enabled_s = "unknown"
+    if active.error != "not_found":
+        active_s = (active.stdout or active.stderr).strip().splitlines()[0] if (active.stdout or active.stderr) else "unknown"
+    if enabled.error != "not_found":
+        enabled_s = (enabled.stdout or enabled.stderr).strip().splitlines()[0] if (enabled.stdout or enabled.stderr) else "unknown"
+    return active_s, enabled_s
 
 
 def run(ctx: DiagnosticContext) -> CheckResult:
@@ -168,17 +221,54 @@ def run(ctx: DiagnosticContext) -> CheckResult:
     finding = f"{CEF_PORT}: {_fmt(owners_8080, unnamed)}; {DECKY_PORT}: {_fmt(owners_1337, unnamed)}"
     exposed_8081 = any(_line_exposes(ln, CEF_FORWARD_PORT) for ln in proc.stdout.splitlines())
     if exposed_8081:
+        owner = _names(owners_8081)[0] if _names(owners_8081) else ""
+        if not owner:
+            comm = None
+            pid_m = re.search(rf":{CEF_FORWARD_PORT}\b.*?pid=(\d+)", proc.stdout)
+            if pid_m:
+                comm = _comm_for_pid(ctx, int(pid_m.group(1)))
+            owner = comm or unnamed
+        setting = _cef_forward_setting(ctx)
+        css = _css_loader_names(ctx)
+        active_s, enabled_s = _unit_state(ctx, CEF_FORWARD_UNIT)
+        ctx.facts.cef_forward_exposed = True
+        ctx.facts.cef_forward_setting = setting
+        ctx.facts.cef_forward_owner = owner
+        evidence.append(f"cef_forward setting: {setting}")
+        evidence.append(f"{CEF_FORWARD_UNIT}: active={active_s} enabled={enabled_s}")
+        if css:
+            evidence.append("theme plugins: " + ", ".join(css))
+
+        if setting is True:
+            why = ctx.tr("decky.ports.cef_forward.why.css", name=css[0]) if css else ctx.tr("decky.ports.cef_forward.why.setting")
+            return result(
+                ID,
+                title,
+                Status.INFO,
+                ctx.tr("decky.ports.cef_forward.expected", why=why),
+                explanation=ctx.tr("decky.ports.cef_forward.expected.explain"),
+                recommendation=ctx.tr("decky.ports.cef_forward.expected.rec"),
+                evidence=evidence,
+                source=EvidenceSource.SOCKETS,
+                extra={"cef_forward_exposed": True, "cef_forward_expected": True, "compact_note": True},
+            )
+        finding_u = ctx.tr("decky.ports.cef_forward.named", owner=owner)
+        if css:
+            finding_u = ctx.tr("decky.ports.cef_forward.css", name=css[0], owner=owner)
+        rec = ctx.tr("decky.ports.cef_forward.rec")
+        if setting is False:
+            rec = ctx.tr("decky.ports.cef_forward.leftover.rec")
         return result(
             ID,
             title,
             Status.WARNING,
-            ctx.tr("decky.ports.cef_forward"),
+            finding_u,
             explanation=ctx.tr("decky.ports.cef_forward.explain"),
-            recommendation=ctx.tr("decky.ports.cef_forward.rec"),
+            recommendation=rec,
             evidence=evidence,
             source=EvidenceSource.SOCKETS,
             severity=Severity.MEDIUM,
-            extra={"cef_forward_exposed": True},
+            extra={"cef_forward_exposed": True, "cef_forward_expected": False},
         )
     status = Status.PASS if owners_1337 or ctx.facts.decky_installed is False else Status.INFO
     return result(
