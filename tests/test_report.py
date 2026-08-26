@@ -21,3 +21,5 @@ def test_report_is_sanitised(tmp_path: Path) -> None:
     assert "antonio" not in body
     assert str(home) not in body
     assert "/home/<USER>" in body or "<USER>" in body
+    assert "steamloopback.host" in body
+    assert "CEF / steamloopback.host" in body

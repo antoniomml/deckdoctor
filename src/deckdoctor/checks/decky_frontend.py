@@ -29,6 +29,26 @@ def _json_looks_like_cef(body: str) -> bool:
     return False
 
 
+def _cef_excerpt(body: str, *, limit: int = 8, width: int = 160) -> list[str]:
+    try:
+        data = json.loads(body)
+    except json.JSONDecodeError:
+        return []
+    if not isinstance(data, list):
+        return []
+    lines: list[str] = []
+    for item in data[:limit]:
+        if not isinstance(item, dict):
+            continue
+        title = str(item.get("title") or "").strip() or "(untitled)"
+        url = str(item.get("url") or item.get("webSocketDebuggerUrl") or "").strip()
+        line = f"{title} {url}".strip()
+        if len(line) > width:
+            line = line[: width - 1] + "…"
+        lines.append(line)
+    return lines
+
+
 def run(ctx: DiagnosticContext) -> CheckResult:
     steam = ctx.steam_root
     cef_file = steam / ".cef-enable-remote-debugging"
@@ -72,7 +92,12 @@ def run(ctx: DiagnosticContext) -> CheckResult:
     http = ctx.http.request("GET", "http://127.0.0.1:8080/json", timeout=3.0, follow_redirects=True)
     evidence.append(f"GET 127.0.0.1:8080/json → status={http.status} error={http.error}")
     if http.body:
-        evidence.append(http.body[:300])
+        excerpt = _cef_excerpt(http.body)
+        ctx.facts.cef_excerpt = excerpt
+        if excerpt:
+            evidence.extend(excerpt)
+        else:
+            evidence.append(http.body[:300])
 
     conflict = bool(ctx.facts.port_8080_conflict)
     if http.status == 404 or (http.body and "page not found" in http.body.lower()):

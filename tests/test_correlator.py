@@ -57,6 +57,12 @@ def test_steam_beta_likely() -> None:
     assert any("Steam" in d.title or "frontend" in d.title.lower() for d in diags)
 
 
+def test_overlay_updater_correlation() -> None:
+    facts = Facts(overlay_edited=["steamos-atomupd/client.conf"], os_updater="error")
+    diags = correlate([], facts)
+    assert any("overlay" in d.title.lower() or "atomupd" in d.title.lower() for d in diags)
+
+
 def test_spanish_diagnosis_title() -> None:
     facts = Facts(decky_incomplete=True, plugin_loader_present=False, decky_installed=True)
     diags = correlate([], facts, locale="es")

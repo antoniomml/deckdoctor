@@ -33,16 +33,16 @@ False-positive risk: `low | medium | high`.
 
 ## Considered, not MVP (0.2+)
 
-| ID | Description | Evidence | Command / API | Severity | FP risk | Network | Root | MVP | Why deferred |
+| ID | Description | Evidence | Command / API | Severity | FP risk | Network | Root | MVP | Notes |
 |---|---|---|---|---|---|---|---|---|---|
-| SYS-OS-REBOOT | Pending reboot to new slot | RAUC/atomupd/bootconf files | probe known paths | medium | high (paths vary) | no | maybe | no | No stable SteamOS 3 file confirmed; UNKNOWN worse than a lie |
+| SYS-OS-REBOOT | Pending reboot to new slot | `/run/steamos-atomupd/reboot_for_update` | read file (RAUC post-install writes BUILD_ID) | medium | low on this path | no | no | **0.2.x** | Do **not** use Debian `/var/run/reboot-required` |
 | SYS-READONLY | Root unexpectedly RW | `steamos-readonly status` | `steamos-readonly` | low | medium | no | no | no | Informational; easy to misread overlays |
-| SYS-OVERLAY | Edited atomupd/rauc in overlay | `/var/lib/overlays/etc/upper` | list specific files | medium | medium | no | maybe | no | Useful but invasive to explain; 0.2 |
+| SYS-OVERLAY | Edited atomupd/rauc in overlay | `/var/lib/overlays/etc/upper` | those two files only | medium | medium | no | maybe | **0.2.x** | Correlates with updater failure |
 | DECKY-UPDATE | Newer Decky stable available | local version vs `releases/latest` redirect | HTTP redirect, no `/releases` API | low | low | yes | no | no | Nice-to-have; folded into DECKY-INSTALL as INFO if cheap |
 | DECKY-CEF-FORWARD | 8081 portforward unit | systemd | `systemctl status steam-web-debug-portforward.service` | info | low | no | no | no | Optional developer feature |
-| PLUGIN-STORE-UPDATES | N plugins have store updates | store JSON vs local names | GET store + match `plugin.json` name | low | **high** | yes | no | no | Name matching is brittle |
+| PLUGIN-STORE-UPDATES | N plugins have store updates | store JSON vs local names | unique name/dir match only | low | **high if guessed** | yes | no | **0.2.x** | Ambiguous names → INFO, not a fake update count |
 | PLUGIN-LOAD-STATE | Backend loaded vs failed per plugin | loader journal lines | journal + inventory | medium | medium | no | maybe | no | Partially covered by DECKY-LOGS + inventory |
-| FP-EOL | EOL runtimes + apps using them | metadata `EndOfLife` | `flatpak info --show-metadata`; **not** assumed `--columns=end-of-life` | low | medium | maybe | no | no | Column not in current man page; probe in 0.2 |
+| FP-EOL | EOL runtimes + apps using them | metadata `EndOfLife` | `flatpak info --show-metadata`; **not** `--columns=end-of-life` | low | medium | no | no | **0.2.x** | Local metadata only |
 | FP-BROKEN-REF | Named invalid ref in a remote | remote-ls / repair dry-run stderr | `flatpak remote-ls`; `flatpak repair --dry-run` | medium | medium | yes | no | no | Covered in spirit by FP-UPDATES + AUTOFLATPAKS |
 | FP-FLATHUB | Flathub specifically reachable | remotes + HTTP | HEAD configured Flathub URL | medium | low | yes | no | no | Folded into FP-BASIC/FP-UPDATES |
 | NET-DNS | Resolver works | `getaddrinfo` for github.com | libc, not a scanner | medium | low | yes | no | no | Implied by NET-GITHUB |

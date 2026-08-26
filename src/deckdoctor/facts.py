@@ -20,7 +20,11 @@ class Facts:
     os_variant: str | None = None
     os_id: str | None = None
     is_steamos: bool | None = None
+    os_family: str | None = None
     os_channel: str | None = None
+    pending_reboot: bool | None = None
+    pending_reboot_build: str | None = None
+    overlay_edited: list[str] = field(default_factory=list)
     os_updater: str | None = None
     disk: list[dict[str, Any]] = field(default_factory=list)
     disk_min_free: int | None = None
@@ -52,7 +56,10 @@ class Facts:
     decky_log_signatures: list[str] = field(default_factory=list)
     cef_enable_file: bool | None = None
     cef_json_ok: bool | None = None
+    cef_excerpt: list[str] = field(default_factory=list)
     plugins: list[dict[str, Any]] = field(default_factory=list)
+    store_plugins: list[dict[str, str]] = field(default_factory=list)
+    store_updates: list[str] = field(default_factory=list)
     remote_binary_log_hit: bool = False
     flatpak_available: bool | None = None
     flatpak_version: str | None = None
@@ -60,6 +67,7 @@ class Facts:
     flatpak_remote_count: int | None = None
     flatpak_update_check: str | None = None
     flatpak_updates: list[str] = field(default_factory=list)
+    flatpak_eol: list[str] = field(default_factory=list)
     autoflatpaks_installed: bool | None = None
     autoflatpaks_remote_list_failed: bool = False
     github_reachable: bool | None = None

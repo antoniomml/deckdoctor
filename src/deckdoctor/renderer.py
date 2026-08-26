@@ -22,10 +22,10 @@ _STATUS_MARK_ASCII = {
 }
 
 _GROUPS = (
-    ("group.system", ("SYS-OS-VERSION", "SYS-OS-CHANNEL", "SYS-OS-UPDATER", "SYS-DISK", "SYS-TIME", "STEAM-CLIENT")),
+    ("group.system", ("SYS-OS-VERSION", "SYS-OS-CHANNEL", "SYS-OS-UPDATER", "SYS-OS-REBOOT", "SYS-OVERLAY", "SYS-DISK", "SYS-TIME", "STEAM-CLIENT")),
     ("group.decky", ("DECKY-INSTALL", "DECKY-SERVICE", "DECKY-PORTS", "DECKY-FRONTEND", "DECKY-LOGS")),
-    ("group.plugins", ("PLUGIN-INVENTORY", "PLUGIN-REMOTE-BIN", "AUTOFLATPAKS")),
-    ("group.flatpak", ("FP-BASIC", "FP-UPDATES")),
+    ("group.plugins", ("PLUGIN-INVENTORY", "PLUGIN-REMOTE-BIN", "PLUGIN-STORE-UPDATES", "AUTOFLATPAKS")),
+    ("group.flatpak", ("FP-BASIC", "FP-UPDATES", "FP-EOL")),
     ("group.network", ("NET-GITHUB", "NET-STORE")),
 )
 

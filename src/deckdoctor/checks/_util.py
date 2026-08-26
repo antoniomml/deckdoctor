@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from collections.abc import Iterable
 from typing import Any
 
@@ -40,6 +41,31 @@ def result(
         fact_kind=fact_kind,
         extra=extra or {},
     )
+
+
+def version_parts(raw: str) -> tuple[int, ...] | None:
+    """Parse a dotted version for comparison. Returns None if unusable."""
+    text = (raw or "").strip().lstrip("vV")
+    if not text or text.lower() == "unknown":
+        return None
+    parts: list[int] = []
+    for token in re.split(r"[.\-+_]", text):
+        if token.isdigit():
+            parts.append(int(token))
+        elif token:
+            break
+    return tuple(parts) if parts else None
+
+
+def version_is_newer(candidate: str, current: str) -> bool | None:
+    left = version_parts(candidate)
+    right = version_parts(current)
+    if left is None or right is None:
+        return None
+    width = max(len(left), len(right))
+    left = left + (0,) * (width - len(left))
+    right = right + (0,) * (width - len(right))
+    return left > right
 
 
 def first_line(text: str, limit: int = 240) -> str:

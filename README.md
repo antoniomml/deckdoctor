@@ -29,9 +29,26 @@ It is **not**:
 - a Proton / game troubleshooter
 - telemetry
 
+## Platforms / Dónde corre
+
+Primary target: **Steam Deck + SteamOS** (Desktop Mode or SSH). The PyInstaller binary is x86_64 Linux.
+
+It also **runs** on other x86_64 Linux handhelds and distros (Bazzite, ChimeraOS, HoloISO, Nobara, …). Behaviour:
+
+| Stack | What happens off SteamOS |
+|---|---|
+| SteamOS updater / channel / overlay / pending A/B reboot | **Skipped** (those tools and paths are SteamOS-specific) |
+| Decky, plugins, Plugin Store | Run if `~/homebrew` exists |
+| Flatpak (including EOL runtimes) | Run if `flatpak` is on PATH |
+| Steam client / CEF | Run if a Steam datadir is found (`~/.steam/steam` or `~/.local/share/Steam`) |
+
+Bazzite-on-Deck and Bazzite-on-Ally/Legion Go are **best-effort**: same Decky/Flatpak checks, no hardware module, no promise to paper over every image difference. `ID=bazzite` (and a few siblings) is recognised so the CLI says so instead of pretending you are on SteamOS.
+
+Objetivo principal: **Steam Deck + SteamOS**. En Bazzite y otras distros x86_64 el binario arranca; los checks de atomupd/RAUC se omiten y Decky/Flatpak siguen si están instalados. No cubre hardware ni diferencias de cada imagen.
+
 ## Install / Instalación
 
-Requires a Steam Deck (or similar x86_64 Linux handheld). No `pacman`, no Flatpak, no Decky.
+Requires a Steam Deck or similar **x86_64 Linux** handheld. No `pacman`, no Flatpak, no Decky.
 
 **Option A — install script** (downloads the latest release binary and verifies `SHA256SUMS`):
 

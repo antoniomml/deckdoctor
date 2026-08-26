@@ -15,13 +15,14 @@ Shipped in 0.1: core types, MVP checks, human CLI + `--json` + `report`, pytest 
 - `--lang es|en`, `--ascii`/`--plain`, `--only`, `--timeout`
 - Typed `Facts`, `Check` protocol, ruff + mypy, field-level JSON sanitiser, HTTP host allowlist
 
-## 0.2.x — Deeper software health (still open)
+## 0.2.x — Deeper software health (this tree)
 
-- Flatpak EOL via metadata probe (`EndOfLife`), with apps that use those runtimes
-- Plugin store update count if name matching can be made reliable
-- SteamOS pending-reboot if a stable local signal is confirmed on 3.8+
-- Overlay warning if `client.conf` / `rauc/system.conf` are user-edited
-- Bounded CEF/`steamloopback.host` excerpt in the report
+- Flatpak EOL via `flatpak info --show-metadata` (`EndOfLife`), plus apps that use those runtimes
+- Plugin store updates only when the local name/dir maps to **exactly one** store entry
+- Pending SteamOS reboot from `/run/steamos-atomupd/reboot_for_update` (RAUC post-install marker)
+- Overlay warning if `client.conf` / `rauc/system.conf` are user-copied under `/var/lib/overlays/etc/upper`
+- Bounded CEF / `steamloopback.host` excerpt in the report
+- Non-SteamOS images (Bazzite, ChimeraOS, …) skip atomupd/RAUC checks and still run Decky/Flatpak
 
 ## 0.3 — Opt-in fixes (strict contract)
 
