@@ -8,6 +8,8 @@ from dataclasses import dataclass, field
 from typing import Any
 from urllib.parse import urlparse
 
+from deckdoctor import __version__
+
 ALLOWED_HOSTS = frozenset(
     {
         "github.com",
@@ -58,7 +60,7 @@ class _AllowlistRedirect(urllib.request.HTTPRedirectHandler):
 class HttpClient:
     """Tiny HTTPS client. No cookies, no retries storm, User-Agent identified."""
 
-    user_agent = "DeckDoctor/0.2 (local diagnostic; no telemetry)"
+    user_agent = f"DeckDoctor/{__version__} (local diagnostic; no telemetry)"
     allowed_hosts: frozenset[str] = ALLOWED_HOSTS
 
     def request(

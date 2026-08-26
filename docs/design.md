@@ -217,6 +217,10 @@ src/deckdoctor/
   checks/
     __init__.py        # registry
     sys_os.py
+    sys_os_channel.py
+    sys_os_updater.py
+    sys_os_reboot.py
+    sys_overlay.py
     sys_disk.py
     sys_time.py
     steam_client.py
@@ -227,10 +231,12 @@ src/deckdoctor/
     decky_logs.py
     plugin_inventory.py
     plugin_remote_bin.py
+    plugin_store_updates.py
     net_github.py
     net_store.py
     fp_basic.py
     fp_updates.py
+    fp_eol.py
     autoflatpaks.py
 ```
 

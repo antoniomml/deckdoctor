@@ -26,8 +26,9 @@ def _markdown(report: Report) -> str:
         t("report.system"),
         "",
         f"- User home (sanitised later): `{facts.get('decky_home', '')}`",
-        f"- SteamOS version: `{facts.get('os_version', 'unknown')}` build `{facts.get('os_build', 'unknown')}`",
+        f"- OS: `{facts.get('os_family', 'unknown')}` version `{facts.get('os_version', 'unknown')}` build `{facts.get('os_build', 'unknown')}`",
         f"- SteamOS channel: `{facts.get('os_channel', 'unknown')}`",
+        f"- Pending SteamOS reboot: `{facts.get('pending_reboot', 'unknown')}`",
         f"- Steam client: build `{facts.get('steam_version', 'unknown')}` channel `{facts.get('steam_channel', 'unknown')}`",
         f"- Decky: `{facts.get('decky_version', 'unknown')}` channel `{facts.get('decky_channel', 'unknown')}`",
         f"- PluginLoader present: `{facts.get('plugin_loader_present', 'unknown')}`",
@@ -99,6 +100,27 @@ def _markdown(report: Report) -> str:
         lines.append("|---|---|---|")
         for plugin in plugins:
             lines.append(f"| {plugin.get('name')} | {plugin.get('version')} | `{plugin.get('dir')}` |")
+
+    overlay = facts.get("overlay_edited") or []
+    if overlay:
+        lines += ["", t("report.overlay"), ""]
+        for item in overlay:
+            lines.append(f"- `{item}`")
+
+    cef = facts.get("cef_excerpt") or []
+    lines += ["", t("report.cef"), ""]
+    if not cef:
+        lines.append(t("report.no_cef"))
+    else:
+        lines.append("```")
+        lines.extend(cef[:8])
+        lines.append("```")
+
+    eol = facts.get("flatpak_eol") or []
+    if eol:
+        lines += ["", t("report.eol"), ""]
+        for item in eol[:20]:
+            lines.append(f"- {item}")
 
     lines += [
         "",

@@ -23,8 +23,16 @@ VARIANT_ID=steamdeck
 """
 
 CEF_JSON = json.dumps(
-    [{"title": "SharedJSContext", "webSocketDebuggerUrl": "ws://127.0.0.1:8080/devtools/page/1"}]
+    [
+        {
+            "title": "SharedJSContext",
+            "url": "https://steamloopback.host/index.html",
+            "webSocketDebuggerUrl": "ws://127.0.0.1:8080/devtools/page/1",
+        }
+    ]
 )
+
+STORE_JSON = json.dumps([{"id": "example", "name": "Example Plugin", "version": "2.0.0"}])
 
 RATE_OK = json.dumps({"resources": {"core": {"limit": 60, "remaining": 53, "reset": 2000000000}}})
 RATE_ZERO = json.dumps({"resources": {"core": {"limit": 60, "remaining": 0, "reset": 2000000000}}})
@@ -83,6 +91,8 @@ LISTEN 0 10 127.0.0.1:1337 0.0.0.0:* users:(("PluginLoader",pid=11,fd=3))
             cmd(["flatpak", "remotes", "--columns=name,options,url"], "flathub\tsystem\thttps://dl.flathub.org/repo/\n"),
             cmd(["flatpak", "remote-ls", "--updates", "--columns=application,branch,origin"], ""),
             cmd(["flatpak", "remote-ls", "--columns=ref,origin", "-a"], "app/org.mozilla.firefox/x86_64/stable\tflathub\n"),
+            cmd(["flatpak", "list", "--runtime", "--columns=ref,application,origin"], ""),
+            cmd(["flatpak", "list", "--app", "--columns=ref,application,runtime,origin"], ""),
         ]
     )
     return mapping
@@ -96,7 +106,7 @@ def healthy_http() -> FakeHttpClient:
     http.add(
         "GET",
         "https://plugins.deckbrew.xyz/plugins",
-        HttpResult("https://plugins.deckbrew.xyz/plugins", "GET", 200, "[]"),
+        HttpResult("https://plugins.deckbrew.xyz/plugins", "GET", 200, STORE_JSON),
     )
     http.add(
         "HEAD",
@@ -158,6 +168,8 @@ def make_ctx(
     unit_path = tmp / "plugin_loader.service"
     if unit_text is not None:
         unit_path.write_text(unit_text, encoding="utf-8")
+    overlay_root = tmp / "overlay-etc-upper"
+    reboot_path = tmp / "reboot_for_update"
     runner = FakeCommandRunner(commands if commands is not None else healthy_commands())
     ctx = DiagnosticContext(
         home=home,
@@ -167,6 +179,8 @@ def make_ctx(
         network_enabled=network,
         os_release_path=os_path,
         systemd_unit_path=unit_path,
+        overlay_root=overlay_root,
+        reboot_for_update_path=reboot_path,
         disk_usage=disk,
         hostname="steamdeck",
         user="deck",

@@ -8,16 +8,20 @@ from deckdoctor.checks import (
     decky_ports,
     decky_service,
     fp_basic,
+    fp_eol,
     fp_updates,
     net_github,
     net_store,
     plugin_inventory,
     plugin_remote_bin,
+    plugin_store_updates,
     steam_client,
     sys_disk,
     sys_os,
     sys_os_channel,
+    sys_os_reboot,
     sys_os_updater,
+    sys_overlay,
     sys_time,
 )
 from deckdoctor.checks.protocol import Check, FnCheck
@@ -27,6 +31,8 @@ ALL_CHECKS: tuple[FnCheck, ...] = (
     FnCheck(sys_os.ID, sys_os.TITLE, False, sys_os.run),
     FnCheck(sys_os_channel.ID, sys_os_channel.TITLE, False, sys_os_channel.run),
     FnCheck(sys_os_updater.ID, sys_os_updater.TITLE, True, sys_os_updater.run),
+    FnCheck(sys_os_reboot.ID, sys_os_reboot.TITLE, False, sys_os_reboot.run),
+    FnCheck(sys_overlay.ID, sys_overlay.TITLE, False, sys_overlay.run),
     FnCheck(sys_disk.ID, sys_disk.TITLE, False, sys_disk.run),
     FnCheck(sys_time.ID, sys_time.TITLE, False, sys_time.run),
     FnCheck(steam_client.ID, steam_client.TITLE, False, steam_client.run),
@@ -39,9 +45,11 @@ ALL_CHECKS: tuple[FnCheck, ...] = (
     FnCheck(plugin_remote_bin.ID, plugin_remote_bin.TITLE, False, plugin_remote_bin.run),
     FnCheck(fp_basic.ID, fp_basic.TITLE, False, fp_basic.run),
     FnCheck(fp_updates.ID, fp_updates.TITLE, True, fp_updates.run),
+    FnCheck(fp_eol.ID, fp_eol.TITLE, False, fp_eol.run),
     FnCheck(autoflatpaks.ID, autoflatpaks.TITLE, False, autoflatpaks.run),
     FnCheck(net_github.ID, net_github.TITLE, True, net_github.run),
     FnCheck(net_store.ID, net_store.TITLE, True, net_store.run),
+    FnCheck(plugin_store_updates.ID, plugin_store_updates.TITLE, True, plugin_store_updates.run),
 )
 
 NETWORK_CHECK_IDS = {check.id for check in ALL_CHECKS if check.requires_network}

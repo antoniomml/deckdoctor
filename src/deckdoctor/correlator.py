@@ -111,4 +111,17 @@ def correlate(results: list[CheckResult], facts: Facts, locale: str = "en") -> l
             )
         )
 
+    if facts.overlay_edited and facts.os_updater in {"error", "timeout"}:
+        found.append(
+            Diagnosis(
+                title=t("diag.overlay.title"),
+                summary=t("diag.overlay.summary"),
+                recommendation=t("diag.overlay.rec"),
+                related_checks=["SYS-OVERLAY", "SYS-OS-UPDATER"],
+                confidence=Confidence.MEDIUM,
+                fact_kind="likely",
+                severity=Severity.MEDIUM,
+            )
+        )
+
     return found

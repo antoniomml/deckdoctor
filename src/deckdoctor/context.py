@@ -69,6 +69,8 @@ class DiagnosticContext:
     )
     systemd_unit_path: Path = Path("/etc/systemd/system/plugin_loader.service")
     atomupd_client_conf: Path = Path("/etc/steamos-atomupd/client.conf")
+    overlay_root: Path = Path("/var/lib/overlays/etc/upper")
+    reboot_for_update_path: Path = Path("/run/steamos-atomupd/reboot_for_update")
     disk_usage: DiskUsageFn | None = None
     hostname: str = field(default_factory=lambda: os.uname().nodename if hasattr(os, "uname") else "unknown")
     user: str = ""

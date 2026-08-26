@@ -4,8 +4,16 @@ from deckdoctor.checks._util import result
 from deckdoctor.context import DiagnosticContext
 from deckdoctor.models import CheckResult, EvidenceSource, Status
 
+KNOWN_DISTROS = {
+    "steamos": "SteamOS",
+    "bazzite": "Bazzite",
+    "chimeraos": "ChimeraOS",
+    "holoiso": "HoloISO",
+    "nobara": "Nobara",
+}
+
 ID = "SYS-OS-VERSION"
-TITLE = "SteamOS version"
+TITLE = "OS version"
 
 
 def run(ctx: DiagnosticContext) -> CheckResult:
@@ -40,7 +48,12 @@ def run(ctx: DiagnosticContext) -> CheckResult:
         )
 
     is_steamos = distro_id == "steamos" or "SteamOS" in name
+    family = distro_id if distro_id in KNOWN_DISTROS else "other"
+    if is_steamos:
+        family = "steamos"
     ctx.facts.is_steamos = is_steamos
+    ctx.facts.os_family = family
+    distro_label = KNOWN_DISTROS.get(family, name)
     finding = f"{name} {version} (build {build}, variant {variant})"
     if not is_steamos:
         return result(
@@ -48,10 +61,15 @@ def run(ctx: DiagnosticContext) -> CheckResult:
             TITLE,
             Status.INFO,
             finding,
-            explanation="This does not look like SteamOS. SteamOS-specific updater checks will be skipped.",
+            explanation=(
+                f"This looks like {distro_label}, not SteamOS. "
+                "SteamOS updater, channel, overlay, and pending-reboot checks will be skipped. "
+                "Decky, plugin, and Flatpak checks still run when those stacks are present. "
+                "Hardware and other-handheld quirks are out of scope."
+            ),
             evidence=evidence,
             source=EvidenceSource.OS_METADATA,
-            extra={"steamos": False},
+            extra={"steamos": False, "os_family": family},
         )
     return result(
         ID,
@@ -61,5 +79,5 @@ def run(ctx: DiagnosticContext) -> CheckResult:
         explanation="Version is taken from local OS metadata, not from the internet.",
         evidence=evidence,
         source=EvidenceSource.OS_METADATA,
-        extra={"steamos": True, "version": version, "build": build},
+        extra={"steamos": True, "version": version, "build": build, "os_family": "steamos"},
     )
