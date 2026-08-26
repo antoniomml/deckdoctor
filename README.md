@@ -4,74 +4,114 @@
 [![Release](https://img.shields.io/github/v/release/antoniomml/deckdoctor)](https://github.com/antoniomml/deckdoctor/releases/latest)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-**Diagnose SteamOS, Decky Loader, plugins, and Flatpak — locally, in plain language.**
+**Your Steam Deck, in plain language.**
 
-Decky se rompe, el QAM está vacío, Flatpak está viejo, SteamOS dice una cosa y el Deck hace otra. DeckDoctor mira el sistema y te dice **qué ha visto**, **por qué importa** y **qué es seguro hacer**.
+Decky se ha caído, las apps no actualizan, SteamOS dice una cosa y el Deck hace otra. DeckDoctor mira **SteamOS, Decky, los plugins y Flatpak** y te lo cuenta en claro: qué ha visto, por qué importa y qué puedes hacer.
 
-No es un plugin de Decky (funciona aunque Decky esté caído). No telemetría. El diagnóstico no toca nada. Los arreglos son opt-in y hay que pedirlos con `--yes`.
-
-```bash
-curl -L https://raw.githubusercontent.com/antoniomml/deckdoctor/main/scripts/install.sh | sh
-deckdoctor
-```
+No toca nada al mirar. Si hay un arreglo seguro, te enseña el plan. Solo se aplica si tú escribes `--yes`.
 
 ---
 
-## Qué ves
+## En el Deck
+
+Abre el **modo escritorio** (o una terminal por SSH) y pega esto:
+
+```bash
+curl -L https://raw.githubusercontent.com/antoniomml/deckdoctor/main/scripts/install.sh | sh
+deckdoctor --lang es
+```
+
+La primera vez tarda unos segundos. Después, cuando quieras, escribe `deckdoctor`.
+
+---
+
+## Cómo se ve
+
+Esto es la salida real de DeckDoctor (no un mock):
 
 ```text
-DeckDoctor 0.3.0
-SteamOS 3.7.13  ·  Decky Loader 3.1.11
+🩺  DeckDoctor 0.3.0
+    SteamOS 3.8.14 (build 20260624.1, variant steamdeck) · Instalado v3.2.6 (stable)
 
-  ·  Problems  2  ·  Diagnoses  1
+    2 problema(s)
 
-Diagnosis
-  LIKELY CAUSE · medium
-  Decky backend is installed but the service is not running
-    plugin_loader.service is disabled or inactive.
-    → Enable and start plugin_loader.service.
+❗  Problemas
+  ❌  Servicio de Decky  ·  grave
+      plugin_loader.service no está en ejecución
+      La unidad existe pero está inactiva. Sin este servicio Decky no puede inyectarse en Steam.
+      → `deckdoctor fix` puede arrancarlo (puede hacer falta root). El diagnóstico nunca lo arranca.
 
-Problems
-  ✗  DECKY-SERVICE  HIGH
-      plugin_loader.service is not running
-      → deckdoctor fix
+  ⚠️  Actualizaciones Flatpak  ·  aviso
+      2 actualización(es) Flatpak disponible(s)
+      Solo se listan. El diagnóstico no aplicó actualizaciones.
+      → `deckdoctor fix` puede ejecutar `flatpak update -y` tras mostrar el plan. O actualiza desde Discover.
 
-  ⚠  FP-UPDATES  MEDIUM
-      3 Flatpak apps have updates
-      → flatpak update -y
 
-Next
-deckdoctor report      sanitised diagnostic report
-deckdoctor -v          every check
-deckdoctor fix         2 safe fix(es) available
-diagnose never mutates the system. fix prints a plan and needs --yes.
+✅  19 bien   ❌  1   ⚠️  1
+
+👉  Qué puedes hacer
+    📄  deckdoctor report     guarda un informe para pegar en Discord
+    🔍  deckdoctor -v         ver todas las comprobaciones
+    🔧  deckdoctor fix        2 arreglo(s) seguro(s) (enseña el plan, no cambia nada aún)
+    Mirar no cambia nada. Los arreglos solo se aplican con --yes.
 ```
 
-Español: `deckdoctor --lang es` (o `LANG=es_ES.UTF-8`).
+Si todo va bien, ves **Todo en orden** y un ✅.
+
+¿Prefieres inglés? `deckdoctor --lang en` (o deja que use el idioma del sistema).
 
 ---
 
-## Install / Instalación
+## Los tres comandos que importan
 
-Binario **x86_64 Linux** (Steam Deck, Bazzite, etc.). Sin `pacman`, sin Flatpak, sin Decky.
+| Lo que quieres | Lo que escribes |
+|---|---|
+| Que mire y te lo explique | `deckdoctor` |
+| Un informe para pegar en Discord | `deckdoctor report` |
+| Ver el plan de arreglos (sin aplicar nada) | `deckdoctor fix` |
+| Aplicar ese plan | `deckdoctor fix --yes` |
 
-**A — script** (descarga el último release y comprueba `SHA256SUMS`):
+`deckdoctor -v` enseña cada comprobación, también las que están bien.
 
-```bash
-curl -L https://raw.githubusercontent.com/antoniomml/deckdoctor/main/scripts/install.sh | sh
-```
+---
 
-**B — a mano:**
+## Qué puede arreglar (si se lo pides)
 
-```bash
-mkdir -p ~/.local/bin
-curl -L https://github.com/antoniomml/deckdoctor/releases/latest/download/deckdoctor -o ~/.local/bin/deckdoctor
-curl -L https://github.com/antoniomml/deckdoctor/releases/latest/download/SHA256SUMS -o /tmp/SHA256SUMS
-( cd ~/.local/bin && sha256sum -c /tmp/SHA256SUMS )
-chmod +x ~/.local/bin/deckdoctor
-```
+Solo cosas concretas y reversibles:
 
-**C — desde fuente** (desarrollo):
+- Arrancar Decky si está instalado pero parado
+- Actualizar las apps de Flatpak
+- Crear el archivo que Decky necesita para aparecer en Steam
+- Marcar PluginLoader como ejecutable
+
+Nunca reinicia el Deck. Nunca borra apps. Nunca escribe la contraseña por ti.
+
+---
+
+## Dónde corre
+
+Está hecho para el **Steam Deck**. También arranca en otros Linux de mano; ahí hace lo que puede.
+
+---
+
+## Privacidad
+
+Todo ocurre en tu máquina. No hay cuenta, no hay nube, no se sube nada.
+
+A veces consulta GitHub o la tienda de Decky para comparar versiones. Si no quieres red: `deckdoctor --no-network`.
+
+El informe intenta ocultar tu usuario, IPs y tokens. Léelo antes de pegarlo.
+
+---
+
+## License
+
+MIT. See [LICENSE](LICENSE).
+
+---
+
+<details>
+<summary>Si programas</summary>
 
 ```bash
 python3 -m venv .venv
@@ -80,100 +120,8 @@ pip install -e ".[dev]"
 deckdoctor --help
 ```
 
-La primera arrancada del binario PyInstaller tarda unos segundos. CI lo construye en Ubuntu; en SteamOS es best-effort.
-
----
-
-## Commands / Comandos
-
-```text
-deckdoctor                 # diagnose (por defecto) — compacto, solo lectura
-deckdoctor -v              # cada check, incluidos PASS / SKIPPED
-deckdoctor report          # escribe ./deckdoctor-report.md (sanitizado)
-deckdoctor checks          # IDs para --only
-deckdoctor fix             # plan de arreglos seguros (no aplica nada)
-deckdoctor fix --yes       # aplica ese plan
-deckdoctor fix decky-service --yes
-deckdoctor --json
-deckdoctor --no-network    # sin GitHub / store / remotes Flatpak
-deckdoctor --lang es
-deckdoctor --ascii         # marcas ASCII (OK / X / !)
-deckdoctor --only SYS-DISK,DECKY-INSTALL
-deckdoctor --timeout 40    # deadline global en segundos (0 = sin límite; default 60)
-```
-
-Código de salida `1`: hay un **FAIL**, o un fix pedido que no se aplicó. Los WARNING no fallan el diagnose. `2` es error interno.
-
-`deckdoctor fix` solo ofrece mutaciones que puede nombrar:
-
-| id | qué hace |
-|---|---|
-| `pluginloader-exec` | `chmod +x` en PluginLoader (nunca `chmod 777`) |
-| `cef-debug` | crea `~/.steam/steam/.cef-enable-remote-debugging` |
-| `decky-service` | `systemctl enable --now plugin_loader.service` (puede pedir root; DeckDoctor **nunca** lanza `sudo`) |
-| `flatpak-update` | `flatpak update -y` si había actualizaciones listadas |
-
-No reinicia, no mata procesos, no desinstala Flatpaks, no escribe el root de solo lectura, no reinstala Decky.
-
----
-
-## Platforms / Dónde corre
-
-Objetivo principal: **Steam Deck + SteamOS** (Desktop Mode o SSH).
-
-También arranca en otros Linux x86_64 (Bazzite, ChimeraOS, HoloISO, Nobara, …):
-
-| Stack | Fuera de SteamOS |
-|---|---|
-| Updater / canal / overlay / reboot A/B de SteamOS | **Omitido** |
-| Decky, plugins, Plugin Store | Si existe `~/homebrew` |
-| Flatpak (incl. runtimes EOL) | Si `flatpak` está en PATH |
-| Cliente Steam / CEF | Si hay datadir (`~/.steam/steam` o `~/.local/share/Steam`) |
-
-Bazzite-on-Deck y Bazzite-on-Ally/Legion Go son **best-effort**: mismos checks de Decky/Flatpak, sin módulo de hardware, sin promesa de cubrir cada imagen.
-
----
-
-## Network / Red
-
-Solo cuando un check lo necesita (o salvo `--no-network`):
-
-- `https://github.com` (HEAD)
-- `https://api.github.com/rate_limit` (no gasta la cuota principal)
-- `https://github.com/SteamDeckHomebrew/decky-loader/releases/latest`
-- `https://plugins.deckbrew.xyz/plugins`
-- remotes Flatpak ya configurados en el dispositivo
-- endpoints del updater de SteamOS, si las herramientas locales los consultan
-
-Nada se sube. No hay backend de DeckDoctor.
-
----
-
-## Privacy / Privacidad
-
-El informe intenta redactar usuario, `/home/<user>`, hostname, emails, IPs privadas, MACs, Steam IDs, tokens, JWTs y claves SSH. Es **best-effort**: léelo antes de pegarlo en Discord o GitHub.
-
-DeckDoctor **no** es:
-
-- un plugin de Decky
-- un diagnóstico de hardware (eso es [DeckDoc](https://github.com/deucebucket/deckdoc))
-- un troubleshooter de Proton / juegos
-- telemetría
-- permiso para `chmod 777`, matar procesos o reiniciar por ti
-
----
-
-## Docs
-
-- [docs/research.md](docs/research.md) — ecosistema (2026)
-- [docs/design.md](docs/design.md) — arquitectura
-- [docs/checks.md](docs/checks.md) — cada check considerado
-- [docs/roadmap.md](docs/roadmap.md) — 0.1 y lo que sigue
+Docs: [design](docs/design.md) · [checks](docs/checks.md) · [roadmap](docs/roadmap.md)
 
 Issues: [github.com/antoniomml/deckdoctor/issues](https://github.com/antoniomml/deckdoctor/issues)
 
----
-
-## License
-
-MIT. Ver [LICENSE](LICENSE).
+</details>

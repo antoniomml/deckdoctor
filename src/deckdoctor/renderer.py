@@ -8,12 +8,12 @@ from deckdoctor.i18n import translate
 from deckdoctor.models import FixPlan, FixResult, Report, Severity, Status
 
 _STATUS_MARK = {
-    Status.PASS: "✓",
-    Status.INFO: "•",
-    Status.WARNING: "⚠",
-    Status.FAIL: "✗",
-    Status.SKIPPED: "⊘",
-    Status.UNKNOWN: "?",
+    Status.PASS: "✅",
+    Status.INFO: "ℹ️",
+    Status.WARNING: "⚠️",
+    Status.FAIL: "❌",
+    Status.SKIPPED: "⏭️",
+    Status.UNKNOWN: "❓",
 }
 
 _STATUS_MARK_ASCII = {
@@ -23,6 +23,12 @@ _STATUS_MARK_ASCII = {
     Status.FAIL: "X",
     Status.SKIPPED: "-",
     Status.UNKNOWN: "?",
+}
+
+_HINT_EMOJI = {
+    "report": "📄",
+    "verbose": "🔍",
+    "fix": "🔧",
 }
 
 _GROUPS = (
@@ -57,11 +63,20 @@ def _paint(text: str, code: str, *, on: bool) -> str:
     return f"{code}{text}{_RESET}"
 
 
-def _rule(label: str, *, ascii_mode: bool, color: bool) -> str:
+def _rule(label: str, *, ascii_mode: bool, color: bool, emoji: str = "") -> str:
     title = _paint(label, _BOLD, on=color)
     if ascii_mode:
         return f"-- {title} --"
+    if emoji:
+        return f"{emoji}  {title}"
     return f"{title}"
+
+
+def _brand(report: Report) -> str:
+    name = _paint(f"DeckDoctor {report.version}", _BOLD, on=report.color)
+    if report.ascii_mode:
+        return name
+    return f"🩺  {name}"
 
 
 def _headline(report: Report) -> str:
@@ -101,12 +116,11 @@ def _counts(report: Report) -> dict[str, int]:
     return tallies
 
 
-def _footer(report: Report, plans: list[FixPlan] | None, *, color: bool) -> list[str]:
+def _summary_line(report: Report) -> str:
     locale = report.locale
     n = _counts(report)
-    lines = [
-        "",
-        translate(
+    if report.ascii_mode:
+        return translate(
             locale,
             "ui.summary",
             ok=n["ok"],
@@ -114,75 +128,118 @@ def _footer(report: Report, plans: list[FixPlan] | None, *, color: bool) -> list
             warn=n["warn"],
             skip=n["skip"],
             unknown=n["unknown"],
-        ),
+        )
+    bits = [translate(locale, "ui.tally.ok", n=n["ok"])]
+    if n["fail"]:
+        bits.append(translate(locale, "ui.tally.fail", n=n["fail"]))
+    if n["warn"]:
+        bits.append(translate(locale, "ui.tally.warn", n=n["warn"]))
+    if report.verbose:
+        if n["skip"]:
+            bits.append(translate(locale, "ui.tally.skip", n=n["skip"]))
+        if n["unknown"]:
+            bits.append(translate(locale, "ui.tally.unknown", n=n["unknown"]))
+    return "   ".join(bits)
+
+
+def _hint(key: str, text: str, *, ascii_mode: bool) -> str:
+    if ascii_mode:
+        return f"    {text}"
+    return f"    {_HINT_EMOJI[key]}  {text}"
+
+
+def _footer(report: Report, plans: list[FixPlan] | None, *, color: bool) -> list[str]:
+    locale = report.locale
+    lines = [
         "",
-        _paint(translate(locale, "ui.next"), _DIM, on=color),
-        translate(locale, "ui.report_hint"),
-        translate(locale, "ui.verbose_hint"),
+        _summary_line(report),
+        "",
+        _rule(translate(locale, "ui.next"), ascii_mode=report.ascii_mode, color=color, emoji="👉"),
+        _hint("report", translate(locale, "ui.report_hint"), ascii_mode=report.ascii_mode),
+        _hint("verbose", translate(locale, "ui.verbose_hint"), ascii_mode=report.ascii_mode),
     ]
     if plans:
-        lines.append(translate(locale, "ui.fix_hint", count=len(plans)))
+        lines.append(_hint("fix", translate(locale, "ui.fix_hint", count=len(plans)), ascii_mode=report.ascii_mode))
     else:
-        lines.append(translate(locale, "ui.fix_none"))
-    lines.append(translate(locale, "ui.readonly"))
+        lines.append(_hint("fix", translate(locale, "ui.fix_none"), ascii_mode=report.ascii_mode))
+    lines.append(_paint("    " + translate(locale, "ui.readonly"), _DIM, on=color))
     if report.partial:
         lines.append(translate(locale, "ui.partial"))
+    return lines
+
+
+def _diagnosis_block(report: Report) -> list[str]:
+    locale = report.locale
+    color = report.color
+    lines = [_rule(translate(locale, "ui.diagnosis"), ascii_mode=report.ascii_mode, color=color, emoji="💡")]
+    for diag in report.diagnoses:
+        kind = translate(locale, "ui.fact") if diag.fact_kind == "fact" else translate(locale, "ui.likely")
+        conf = translate(locale, f"ui.confidence.{diag.confidence.value}")
+        badge = _paint(f"{kind}  ·  {conf}", _YELLOW, on=color)
+        lines.append(f"  {badge}")
+        lines.append(_paint(f"  {diag.title}", _BOLD, on=color))
+        for para in diag.summary.split(". "):
+            if para.strip():
+                lines.append(f"    {para.strip().rstrip('.')}.")
+        if diag.recommendation:
+            lines.append("    → " + diag.recommendation)
+        lines.append("")
+    return lines
+
+
+def _problem_block(report: Report, *, show_ids: bool) -> list[str]:
+    locale = report.locale
+    color = report.color
+    marks = _STATUS_MARK_ASCII if report.ascii_mode else _STATUS_MARK
+    order = {Severity.HIGH: 0, Severity.MEDIUM: 1, Severity.LOW: 2, Severity.NONE: 3}
+    lines = [_rule(translate(locale, "ui.problems"), ascii_mode=report.ascii_mode, color=color, emoji="❗")]
+    for item in sorted(report.problems, key=lambda r: order.get(r.severity, 9)):
+        mark = marks.get(item.status, "?")
+        tone = _RED if item.status == Status.FAIL else _YELLOW
+        label = item.check_id if show_ids else item.title
+        sev = translate(locale, f"ui.severity.{item.severity.value}")
+        head = _paint(f"  {mark}  {label}", tone + _BOLD if color else "", on=color)
+        lines.append(f"{head}  ·  {sev}" if sev else head)
+        lines.append(f"      {item.finding}")
+        if item.explanation and not show_ids:
+            lines.append(_paint(f"      {item.explanation}", _DIM, on=color))
+        if item.recommendation:
+            lines.append(f"      → {item.recommendation}")
+        lines.append("")
     return lines
 
 
 def _render_compact(report: Report, *, plans: list[FixPlan] | None) -> str:
     locale = report.locale
     color = report.color
-    marks = _STATUS_MARK_ASCII if report.ascii_mode else _STATUS_MARK
-    lines = [_paint(f"DeckDoctor {report.version}", _BOLD, on=color)]
+    lines = [_brand(report)]
     headline = _headline(report)
     if headline:
-        lines.append(_paint(headline, _DIM, on=color))
+        lines.append(_paint(f"    {headline}" if not report.ascii_mode else headline, _DIM, on=color))
     lines.append("")
 
     problems = report.problems
     if not problems and not report.diagnoses:
-        lines.append(_paint(translate(locale, "ui.no_problems"), _GREEN + _BOLD if color else "", on=color))
-        lines.append(_paint(translate(locale, "ui.no_problems.detail"), _DIM, on=color))
+        ok = "✅  " if not report.ascii_mode else ""
+        lines.append(_paint(f"{ok}{translate(locale, 'ui.no_problems')}", _GREEN + _BOLD if color else "", on=color))
+        lines.append(_paint(f"    {translate(locale, 'ui.no_problems.detail')}", _DIM, on=color))
         lines.extend(_footer(report, plans, color=color))
         return "\n".join(lines) + "\n"
 
-    meta = [
-        translate(locale, "ui.problems_count", count=len(problems)),
-        translate(locale, "ui.diag_count", count=len(report.diagnoses)),
-    ]
-    lines.append("  ·  ".join(meta))
-    lines.append("")
-
+    meta: list[str] = []
+    if problems:
+        meta.append(translate(locale, "ui.problems_count", count=len(problems)))
     if report.diagnoses:
-        lines.append(_rule(translate(locale, "ui.diagnosis"), ascii_mode=report.ascii_mode, color=color))
-        for diag in report.diagnoses:
-            kind = translate(locale, "ui.fact") if diag.fact_kind == "fact" else translate(locale, "ui.likely")
-            badge = _paint(f"{kind} · {diag.confidence.value}", _YELLOW, on=color)
-            lines.append(f"  {badge}")
-            lines.append(_paint(f"  {diag.title}", _BOLD, on=color))
-            for para in diag.summary.split(". "):
-                if para.strip():
-                    bit = para.strip().rstrip(".")
-                    lines.append(f"    {bit}.")
-            if diag.recommendation:
-                lines.append("    → " + diag.recommendation)
-            lines.append("")
-
-    lines.append(_rule(translate(locale, "ui.problems"), ascii_mode=report.ascii_mode, color=color))
-    order = {Severity.HIGH: 0, Severity.MEDIUM: 1, Severity.LOW: 2, Severity.NONE: 3}
-    for item in sorted(problems, key=lambda r: order.get(r.severity, 9)):
-        mark = marks.get(item.status, "?")
-        tone = _RED if item.status == Status.FAIL else _YELLOW
-        head = _paint(f"  {mark}  {item.check_id}", tone + _BOLD if color else "", on=color)
-        lines.append(f"{head}  {item.severity.value}")
-        lines.append(f"      {item.finding}")
-        if item.explanation:
-            lines.append(_paint(f"      {item.explanation}", _DIM, on=color))
-        if item.recommendation:
-            lines.append(f"      → {item.recommendation}")
+        meta.append(translate(locale, "ui.diag_count", count=len(report.diagnoses)))
+    if meta:
+        prefix = "    " if not report.ascii_mode else ""
+        lines.append(prefix + "  ·  ".join(meta))
         lines.append("")
 
+    if report.diagnoses:
+        lines.extend(_diagnosis_block(report))
+
+    lines.extend(_problem_block(report, show_ids=False))
     lines.extend(_footer(report, plans, color=color))
     return "\n".join(lines).rstrip() + "\n"
 
@@ -191,10 +248,10 @@ def _render_verbose(report: Report, *, plans: list[FixPlan] | None) -> str:
     locale = report.locale
     color = report.color
     marks = _STATUS_MARK_ASCII if report.ascii_mode else _STATUS_MARK
-    lines = [_paint(f"DeckDoctor {report.version}", _BOLD, on=color)]
+    lines = [_brand(report)]
     headline = _headline(report)
     if headline:
-        lines.append(_paint(headline, _DIM, on=color))
+        lines.append(_paint(f"    {headline}" if not report.ascii_mode else headline, _DIM, on=color))
     lines.append("")
     by = {r.check_id: r for r in report.results}
     tones = {
@@ -216,33 +273,14 @@ def _render_verbose(report: Report, *, plans: list[FixPlan] | None) -> str:
             lines.append(f"{prefix} {item.finding}")
         lines.append("")
 
-    problems = report.problems
     if report.diagnoses:
-        lines.append(_rule(translate(locale, "ui.diagnosis"), ascii_mode=report.ascii_mode, color=color))
-        for diag in report.diagnoses:
-            kind = translate(locale, "ui.fact") if diag.fact_kind == "fact" else translate(locale, "ui.likely")
-            lines.append(f"  {_paint(f'{kind} · {diag.confidence.value}', _YELLOW, on=color)}")
-            lines.append(_paint(f"  {diag.title}", _BOLD, on=color))
-            for para in diag.summary.split(". "):
-                if para.strip():
-                    lines.append(f"    {para.strip().rstrip('.')}.")
-            if diag.recommendation:
-                lines.append("    → " + diag.recommendation)
-            lines.append("")
-    if problems:
-        lines.append(_rule(translate(locale, "ui.problems"), ascii_mode=report.ascii_mode, color=color))
-        order = {Severity.HIGH: 0, Severity.MEDIUM: 1, Severity.LOW: 2, Severity.NONE: 3}
-        for item in sorted(problems, key=lambda r: order.get(r.severity, 9)):
-            mark = marks.get(item.status, "?")
-            tone = _RED if item.status == Status.FAIL else _YELLOW
-            lines.append(f"{_paint(f'  {mark}  {item.check_id}', tone + _BOLD if color else '', on=color)}  {item.severity.value}")
-            lines.append(f"      {item.finding}")
-            if item.recommendation:
-                lines.append(f"      → {item.recommendation}")
-            lines.append("")
+        lines.extend(_diagnosis_block(report))
+    if report.problems:
+        lines.extend(_problem_block(report, show_ids=True))
     elif not report.diagnoses:
-        lines.append(_paint(translate(locale, "ui.no_problems"), _GREEN + _BOLD if color else "", on=color))
-        lines.append(_paint(translate(locale, "ui.no_problems.detail"), _DIM, on=color))
+        ok = "✅  " if not report.ascii_mode else ""
+        lines.append(_paint(f"{ok}{translate(locale, 'ui.no_problems')}", _GREEN + _BOLD if color else "", on=color))
+        lines.append(_paint(f"    {translate(locale, 'ui.no_problems.detail')}", _DIM, on=color))
 
     lines.extend(_footer(report, plans, color=color))
     return "\n".join(lines).rstrip() + "\n"
@@ -285,11 +323,11 @@ def render_fix_plan(plans: list[FixPlan], locale: str, *, ascii_mode: bool = Fal
     return "\n".join(lines)
 
 
-def render_fix_results(results: list[FixResult], locale: str, *, color: bool = False) -> str:
+def render_fix_results(results: list[FixResult], locale: str, *, color: bool = False, ascii_mode: bool = False) -> str:
     lines = [translate(locale, "fix.applying", count=len(results)), ""]
+    mark_ok = "OK" if ascii_mode else _paint("✅", _GREEN, on=color)
+    mark_bad = "X" if ascii_mode else _paint("❌", _RED, on=color)
     for item in results:
-        mark_ok = _paint("✓", _GREEN, on=color) if color else "OK"
-        mark_bad = _paint("✗", _RED, on=color) if color else "X"
         if item.ok:
             lines.append(f"  {mark_ok}  {translate(locale, 'fix.done_ok', id=item.id)}")
         else:

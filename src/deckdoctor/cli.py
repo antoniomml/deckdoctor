@@ -167,7 +167,7 @@ def _main(argv: list[str] | None) -> int:
         if not plans or not args.yes:
             return 0
         results = apply_plans(ctx, plans)
-        print(sanitizer.apply(render_fix_results(results, locale, color=color)), end="")
+        print(sanitizer.apply(render_fix_results(results, locale, color=color, ascii_mode=bool(args.ascii))), end="")
         print(translate(locale, "fix.rediagnose"), file=sys.stderr)
         ctx2 = build_context(
             network=not args.no_network,

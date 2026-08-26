@@ -8,10 +8,11 @@ from pathlib import Path
 import pytest
 
 from deckdoctor.cli import build_parser, main
+from deckdoctor.command import CommandResult
 from deckdoctor.models import Status
 from deckdoctor.renderer import render_cli
 from deckdoctor.runner import diagnose
-from tests.conftest import make_ctx, make_home
+from tests.conftest import healthy_commands, make_ctx, make_home
 
 
 def test_parser_defaults() -> None:
@@ -36,8 +37,25 @@ def test_ascii_marks(tmp_path: Path) -> None:
     ctx = make_ctx(tmp_path, ascii_mode=True, verbose=True)
     report = diagnose(ctx)
     text = render_cli(report)
-    assert "✓" not in text
+    assert "✅" not in text
+    assert "❌" not in text
+    assert "🩺" not in text
     assert "OK" in text
+
+
+def test_compact_uses_titles_and_emoji(tmp_path: Path) -> None:
+    commands = healthy_commands()
+    commands[("systemctl", "is-active", "plugin_loader.service")] = CommandResult(
+        ("systemctl", "is-active", "plugin_loader.service"), 3, "inactive\n", ""
+    )
+    ctx = make_ctx(tmp_path, commands=commands, locale="es")
+    report = diagnose(ctx)
+    text = render_cli(report)
+    assert "❌" in text
+    assert "🩺" in text
+    assert "Servicio de Decky" in text
+    assert "DECKY-SERVICE" not in text
+    assert "Qué puedes hacer" in text
 
 
 def test_spanish_chrome(tmp_path: Path) -> None:
