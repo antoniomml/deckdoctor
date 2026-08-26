@@ -176,10 +176,15 @@ def run(ctx: DiagnosticContext) -> CheckResult:
         usage = ctx.measure_disk(path)
         if usage is None:
             continue
+        # Always keep home and /var. On SteamOS they are different disks; on a
+        # GitHub runner /tmp and /var share a device, and skipping /var hid the
+        # tiny-partition check. Bind-mounts like /var/lib/flatpak still dedupe.
+        keep = path == ctx.home or path == Path("/var")
         dev = _device_id(path)
-        if dev is not None:
+        if not keep and dev is not None:
             if dev in seen_dev:
                 continue
+        if dev is not None:
             seen_dev.add(dev)
         status, severity = classify(usage.total, usage.free)
         mounts.append((str(path), usage.total, usage.used, usage.free, status, severity))

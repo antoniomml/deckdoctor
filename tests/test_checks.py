@@ -285,6 +285,28 @@ def test_tiny_var_actually_full_still_fails(tmp_path: Path) -> None:
     assert "/var" in disk.finding
 
 
+def test_var_still_listed_when_it_shares_a_device_with_home(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """ubuntu-latest CI: /tmp (pytest home) and /var are the same st_dev."""
+    import shutil
+
+    from deckdoctor.checks import sys_disk
+    from tests.conftest import plenty_disk
+
+    def steamos_layout(path: Path) -> shutil._ntuple_diskusage:
+        if Path(path).as_posix() == "/var":
+            return shutil._ntuple_diskusage(230 * 1024**2, 55 * 1024**2, 175 * 1024**2)
+        return plenty_disk(path)
+
+    monkeypatch.setattr(sys_disk, "_device_id", lambda _path: 1)
+    ctx = make_ctx(tmp_path, disk=steamos_layout)
+    report = diagnose(ctx)
+    disk = next(r for r in report.results if r.check_id == "SYS-DISK")
+    assert disk.status == Status.PASS
+    assert any("/var:" in line for line in disk.evidence)
+
+
 def test_ss_without_process_name_is_not_a_conflict(tmp_path: Path) -> None:
     commands = healthy_commands()
     commands[("ss", "-ltnp")] = CommandResult(
