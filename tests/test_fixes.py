@@ -97,3 +97,19 @@ def test_missing_decky_has_no_decky_fixes(tmp_path: Path) -> None:
     assert "pluginloader-exec" not in ids
     assert "decky-service" not in ids
     assert "cef-debug" not in ids
+
+
+def test_disk_only_never_proposes_cef(tmp_path: Path) -> None:
+    ctx = make_ctx(tmp_path, home=make_home(tmp_path, cef=False), only_ids=frozenset({'SYS-DISK'}))
+    assert collect_plans(ctx, diagnose(ctx)) == []
+
+
+def test_flatpak_failure_is_not_hidden_by_user_fallback(tmp_path: Path) -> None:
+    from deckdoctor.fixes import flatpak_update
+
+    executor = FakeFixExecutor()
+    executor.mapping[('flatpak', 'update', '-y')] = CommandResult((), 1, '', 'system update failed')
+    executor.mapping[('flatpak', '--user', 'update', '-y')] = CommandResult((), 0, 'Nothing to do', '')
+    result = flatpak_update.apply(make_ctx(tmp_path), executor)
+    assert not result.ok
+    assert executor.calls == [('flatpak', 'update', '-y')]

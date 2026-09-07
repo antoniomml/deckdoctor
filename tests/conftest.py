@@ -186,6 +186,10 @@ def make_ctx(
         disk_usage=disk,
         hostname="steamdeck",
         user="deck",
+        media_root=tmp / "media",
+        sys_root=tmp / "sys",
+        which=lambda _tool: None,
+        proc_root=tmp / "proc",
         locale=locale,  # type: ignore[arg-type]
         only_ids=only_ids,
         deadline=deadline,

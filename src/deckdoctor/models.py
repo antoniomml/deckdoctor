@@ -113,11 +113,13 @@ class FixResult:
     ok: bool
     finding: str
     evidence: list[str] = field(default_factory=list)
+    verified: bool | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
             "id": self.id,
             "ok": self.ok,
+            "verified": self.verified,
             "finding": self.finding,
             "evidence": list(self.evidence),
         }
@@ -132,6 +134,8 @@ class Report:
     facts: dict[str, Any] = field(default_factory=dict)
     locale: str = "en"
     ascii_mode: bool = False
+    repair_results: list[FixResult] = field(default_factory=list)
+    comparison: list[dict[str, Any]] | None = None
     partial: bool = False
     verbose: bool = False
     color: bool = False
@@ -147,7 +151,10 @@ class Report:
             "facts": self.facts,
             "results": [r.to_dict() for r in self.results],
             "diagnoses": [d.to_dict() for d in self.diagnoses],
+            "repair_results": [r.to_dict() for r in self.repair_results],
+            "comparison": self.comparison,
             "problem_count": len(self.problems),
+            "coverage": {status.value: sum(r.status == status for r in self.results) for status in Status},
             "locale": self.locale,
             "partial": self.partial,
             "verbose": self.verbose,

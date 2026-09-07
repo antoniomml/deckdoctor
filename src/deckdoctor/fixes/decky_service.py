@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from deckdoctor.context import DiagnosticContext
 from deckdoctor.fixes.executor import FixExecutor
-from deckdoctor.models import FixPlan, FixResult, Report
+from deckdoctor.models import FixPlan, FixResult, Report, Status
 
 ID = "decky-service"
 
@@ -10,7 +10,8 @@ _UNIT = "plugin_loader.service"
 
 
 def plan(ctx: DiagnosticContext, report: Report) -> FixPlan | None:
-    del report
+    if not any(r.check_id == "DECKY-SERVICE" and r.status == Status.FAIL for r in report.results):
+        return None
     if not ctx.facts.plugin_loader_present:
         return None
     if ctx.facts.plugin_loader_executable is False:
@@ -22,7 +23,7 @@ def plan(ctx: DiagnosticContext, report: Report) -> FixPlan | None:
         return None
     if active == "masked" or (ctx.facts.decky_service_enabled or "").startswith("masked"):
         return None
-    if active is None:
+    if active not in {"inactive", "failed"}:
         return None
     return FixPlan(
         id=ID,
@@ -37,25 +38,6 @@ def plan(ctx: DiagnosticContext, report: Report) -> FixPlan | None:
 
 
 def apply(ctx: DiagnosticContext, executor: FixExecutor) -> FixResult:
-    timeout = 30.0
-    attempts = [
-        ["systemctl", "enable", "--now", _UNIT],
-        ["systemctl", "--user", "enable", "--now", _UNIT],
-        ["systemctl", "start", _UNIT],
-    ]
-    evidence: list[str] = []
-    denied = False
-    for argv in attempts:
-        proc = executor.run(argv, timeout=timeout)
-        evidence.append(f"{' '.join(argv)} → exit {proc.exit_code} {proc.stderr.strip()[:200]}")
-        blob = f"{proc.stdout}\n{proc.stderr}".lower()
-        if proc.ok:
-            return FixResult(ID, True, ctx.tr("fix.decky.ok"), evidence)
-        if "permission denied" in blob or "interactive authentication" in blob or proc.exit_code in {1, 4}:
-            if "denied" in blob or "polkit" in blob or "auth" in blob:
-                denied = True
-        if proc.error == "not_found":
-            continue
-    if denied:
-        return FixResult(ID, False, ctx.tr("fix.decky.denied"), evidence)
-    return FixResult(ID, False, ctx.tr("fix.decky.fail"), evidence)
+    proc = executor.run(["systemctl", "enable", "--now", _UNIT], timeout=30.0)
+    evidence = [f"systemctl enable --now {_UNIT} → exit {proc.exit_code} {proc.stderr.strip()[:200]}"]
+    return FixResult(ID, proc.ok, ctx.tr("fix.decky.ok" if proc.ok else "fix.decky.fail"), evidence)

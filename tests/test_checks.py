@@ -119,7 +119,7 @@ def test_frontend_missing_steam_beta(tmp_path: Path) -> None:
     report = diagnose(ctx)
     steam = next(r for r in report.results if r.check_id == "STEAM-CLIENT")
     assert steam.extra.get("channel") == "beta" or "beta" in steam.finding.lower()
-    assert any("Steam" in d.title or "frontend" in d.title.lower() for d in report.diagnoses)
+    assert not report.diagnoses
 
 
 def test_steamdeck_stablebeta_package_file_is_stable(tmp_path: Path) -> None:

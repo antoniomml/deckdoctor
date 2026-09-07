@@ -4,6 +4,8 @@ import os
 from typing import Literal
 
 from deckdoctor.i18n_checks import CHECK_EN, CHECK_ES
+from deckdoctor.i18n_handheld import EN as HANDHELD_EN
+from deckdoctor.i18n_handheld import ES as HANDHELD_ES
 
 Locale = Literal["en", "es"]
 
@@ -11,7 +13,7 @@ _EN: dict[str, str] = {
     "cli.description": "Diagnostics for SteamOS, Decky Loader, plugins, and Flatpak. Diagnose is read-only; fix is opt-in.",
     "cli.json": "Print machine-readable JSON",
     "cli.no_network": "Skip checks that need the internet",
-    "cli.output": "Report path (for the report command)",
+    "cli.output": "Save the diagnosis to this path (Markdown, or JSON with --json)",
     "cli.command": "diagnose (default), report, fix, or checks",
     "cli.target": "Optional fix id (only with the fix command)",
     "cli.ascii": "Use ASCII status marks (OK/X/!) instead of Unicode",
@@ -38,7 +40,9 @@ _EN: dict[str, str] = {
     "ui.recommended": "Recommended: {text}",
     "ui.problems": "Problems",
     "ui.problems_count": "{count} problem(s)",
-    "ui.no_problems": "All clear",
+    "cli.invalid_only": "Invalid check selection: {ids}. Use deckdoctor checks to list IDs.",
+    "ui.limited": "No issues detected; coverage is limited. Use --verbose to see unverified checks.",
+    "ui.no_problems": "No issues detected in the checks performed",
     "ui.no_problems.detail": "Nothing failed.",
     "ui.partial": "Stopped early: some checks did not run (time limit).",
     "ui.incomplete": "Incomplete",
@@ -54,8 +58,8 @@ _EN: dict[str, str] = {
     "ui.tally.ok": "✅  {n} ok",
     "ui.tally.fail": "❌  {n}",
     "ui.tally.warn": "⚠️  {n}",
-    "ui.tally.skip": "⏭️  {n}",
-    "ui.tally.unknown": "❓  {n}",
+    "ui.tally.skip": "⏭️  {n} skipped",
+    "ui.tally.unknown": "❓  {n} unknown",
     "ui.diag_count": "{count} diagnosis",
     "ui.next": "What you can do",
     "ui.severity.high": "serious",
@@ -238,7 +242,9 @@ _ES: dict[str, str] = {
     "ui.recommended": "Recomendado: {text}",
     "ui.problems": "Problemas",
     "ui.problems_count": "{count} problema(s)",
-    "ui.no_problems": "Todo en orden",
+    "cli.invalid_only": "Selección de comprobaciones no válida: {ids}. Consulta deckdoctor checks.",
+    "ui.limited": "Sin incidencias detectadas; cobertura limitada. Usa --verbose para ver lo no verificado.",
+    "ui.no_problems": "Sin incidencias en las comprobaciones realizadas",
     "ui.no_problems.detail": "Nada falló.",
     "ui.partial": "Se paró antes de tiempo: algunas comprobaciones no se ejecutaron.",
     "ui.incomplete": "Incompleto",
@@ -254,8 +260,8 @@ _ES: dict[str, str] = {
     "ui.tally.ok": "✅  {n} bien",
     "ui.tally.fail": "❌  {n}",
     "ui.tally.warn": "⚠️  {n}",
-    "ui.tally.skip": "⏭️  {n}",
-    "ui.tally.unknown": "❓  {n}",
+    "ui.tally.skip": "⏭️  {n} omitidas",
+    "ui.tally.unknown": "❓  {n} desconocidas",
     "ui.diag_count": "{count} diagnóstico(s)",
     "ui.next": "Qué puedes hacer",
     "ui.severity.high": "grave",
@@ -408,8 +414,8 @@ _ES: dict[str, str] = {
 }
 
 MESSAGES: dict[str, dict[str, str]] = {
-    "en": {**_EN, **CHECK_EN},
-    "es": {**_ES, **CHECK_ES},
+    "en": {**_EN, **CHECK_EN, **HANDHELD_EN},
+    "es": {**_ES, **CHECK_ES, **HANDHELD_ES},
 }
 
 

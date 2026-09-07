@@ -21,6 +21,10 @@ def _markdown(report: Report) -> str:
         t("report.tool_version", version=report.version),
         t("report.generated", when=report.generated_at),
         t("report.posture"),
+        t("ui.scope", scope=facts.get("scope", "unknown"), network=facts.get("network_enabled", "unknown")),
+        "Coverage: " + str(report.to_dict()["coverage"]),
+        t("ui.partial") if report.partial else "",
+        t("ui.comparison", count=len(report.comparison)) if report.comparison is not None else "",
         t("report.sanitise"),
         "",
         t("report.system"),
@@ -45,6 +49,18 @@ def _markdown(report: Report) -> str:
         finding = item.finding.replace("|", "\\|")
         lines.append(f"| `{item.status.value}` | `{item.check_id}` | {finding} |")
 
+    if report.comparison:
+        lines += ["", "### Before / after", ""]
+        for change in report.comparison:
+            lines.append(f"- {change['id']}: {change['before']} → {change['after']}")
+    lines += ["", "### Observations and limitations", ""]
+    for item in report.results:
+        if item.status == Status.SKIPPED:
+            continue
+        lines += [f"#### {item.check_id}", "", item.explanation]
+        if item.recommendation:
+            lines.append(item.recommendation)
+        lines += ["", *[f"- {line}" for line in item.evidence[:30]], ""]
     lines += ["", t("report.diagnoses"), ""]
     if not report.diagnoses:
         lines.append(t("report.no_diagnoses"))

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import shutil
 import sys
 import textwrap
 
@@ -34,6 +35,7 @@ _HINT_EMOJI = {
 }
 
 _GROUPS = (
+    ("group.handheld", ("HOST-CAPABILITIES", "STEAM-LIBRARIES", "STEAM-GAME", "HW-BATTERY", "HW-INPUT", "HW-RESUME", "HW-DISPLAY", "HW-AUDIO", "HW-PERFORMANCE")),
     ("group.system", ("SYS-OS-VERSION", "SYS-OS-CHANNEL", "SYS-OS-UPDATER", "SYS-OS-REBOOT", "SYS-OVERLAY", "SYS-DISK", "SYS-TIME", "STEAM-CLIENT")),
     ("group.decky", ("DECKY-INSTALL", "DECKY-SERVICE", "DECKY-PORTS", "DECKY-FRONTEND", "DECKY-LOGS")),
     ("group.plugins", ("PLUGIN-INVENTORY", "PLUGIN-REMOTE-BIN", "PLUGIN-STORE-UPDATES", "AUTOFLATPAKS")),
@@ -70,12 +72,12 @@ def _arrow(ascii_mode: bool) -> str:
     return "->" if ascii_mode else "→"
 
 
-def _fill(text: str, *, indent: str, width: int = _WRAP) -> list[str]:
+def _fill(text: str, *, indent: str, width: int | None = None) -> list[str]:
     if not text:
         return []
     hang = "  " if text.startswith("→ ") or text.startswith("-> ") else ""
     wrapper = textwrap.TextWrapper(
-        width=width,
+        width=width or max(24, min(100, shutil.get_terminal_size((_WRAP, 24)).columns)),
         initial_indent=indent,
         subsequent_indent=indent + hang,
         break_long_words=False,
@@ -145,6 +147,7 @@ def _snapshot_lines(report: Report) -> list[str]:
         lines.append(indent + translate(locale, "ui.snapshot.sd.missing"))
     games = facts.get("steam_game_count")
     if games is None:
+        lines.append(indent + translate(locale, "ui.games_unknown"))
         return lines
     gi = int(facts.get("steam_games_internal") or 0)
     gs = int(facts.get("steam_games_sd") or 0)
@@ -206,11 +209,10 @@ def _summary_line(report: Report, *, color: bool) -> str:
         bits.append(_paint(translate(locale, "ui.tally.fail", n=n["fail"]), _RED, on=color))
     if n["warn"]:
         bits.append(_paint(translate(locale, "ui.tally.warn", n=n["warn"]), _YELLOW, on=color))
-    if report.verbose or report.partial:
-        if n["skip"]:
-            bits.append(_paint(translate(locale, "ui.tally.skip", n=n["skip"]), _DIM, on=color))
-        if n["unknown"]:
-            bits.append(_paint(translate(locale, "ui.tally.unknown", n=n["unknown"]), _YELLOW, on=color))
+    if n["skip"]:
+        bits.append(_paint(translate(locale, "ui.tally.skip", n=n["skip"]), _DIM, on=color))
+    if n["unknown"]:
+        bits.append(_paint(translate(locale, "ui.tally.unknown", n=n["unknown"]), _YELLOW, on=color))
     return "    ".join(bits) if bits else translate(locale, "ui.partial")
 
 
@@ -223,7 +225,14 @@ def _hint(key: str, text: str, *, ascii_mode: bool) -> str:
 def _footer(report: Report, plans: list[FixPlan] | None, *, color: bool) -> list[str]:
     locale = report.locale
     pad = "    "
-    lines = ["", f"{pad}{_summary_line(report, color=color)}", ""]
+    lines = ["", *_fill(_summary_line(report, color=color), indent=pad), ""]
+    scope = report.facts.get("scope", "all")
+    scope_text = ", ".join(scope) if isinstance(scope, list) else str(scope)
+    lines.extend(_fill(translate(locale, "ui.scope", scope=scope_text, network=translate(locale, "ui.network_on" if report.facts.get("network_enabled") else "ui.network_off")), indent=pad))
+    if report.comparison is not None:
+        lines.extend(_fill(translate(locale, "ui.comparison", count=len(report.comparison)), indent=pad))
+        for change in report.comparison:
+            lines.extend(_fill(f"{change['id']}: {change['before']} -> {change['after']}", indent=pad))
     lines.append(_hint("report", translate(locale, "ui.report_hint"), ascii_mode=report.ascii_mode))
     lines.append(_hint("verbose", translate(locale, "ui.verbose_hint"), ascii_mode=report.ascii_mode))
     if plans:
@@ -233,7 +242,7 @@ def _footer(report: Report, plans: list[FixPlan] | None, *, color: bool) -> list
     lines.append(_paint(pad + translate(locale, "ui.readonly"), _DIM, on=color))
     if report.partial:
         lines.append(pad + translate(locale, "ui.partial"))
-    return lines
+    return [wrapped for line in lines for wrapped in (_fill(line.strip(), indent=pad) if line else [""])]
 
 
 def _compact_diagnoses(report: Report) -> list[Diagnosis]:
@@ -324,14 +333,22 @@ def _incomplete_block(report: Report) -> list[str]:
     return lines
 
 
+
+def _no_issues_lines(report: Report) -> list[str]:
+    limited = not report.results or any(r.status in {Status.UNKNOWN, Status.SKIPPED} for r in report.results)
+    mark = "" if report.ascii_mode else "ℹ️  " if limited else "✅  "
+    text = mark + translate(report.locale, "ui.limited" if limited else "ui.no_problems")
+    return [_paint(row, _CYAN if limited else _GREEN, on=report.color) for row in _fill(text, indent="")]
+
+
 def _render_compact(report: Report, *, plans: list[FixPlan] | None) -> str:
-    locale = report.locale
     color = report.color
     lines = [_brand(report)]
     headline = _headline(report)
     if headline:
-        lines.append(_paint(f"    {headline}" if not report.ascii_mode else headline, _DIM, on=color))
-    lines.extend(_snapshot_lines(report))
+        lines.extend(_paint(line, _DIM, on=color) for line in _fill(headline, indent="    " if not report.ascii_mode else ""))
+    for snapshot in _snapshot_lines(report):
+        lines.extend(_fill(snapshot.strip(), indent="    "))
     lines.append("")
 
     stories = _compact_diagnoses(report)
@@ -341,8 +358,7 @@ def _render_compact(report: Report, *, plans: list[FixPlan] | None) -> str:
         if report.partial:
             lines.extend(_incomplete_block(report))
         else:
-            ok = "✅  " if not report.ascii_mode else ""
-            lines.append(_paint(f"{ok}{translate(locale, 'ui.no_problems')}", _GREEN + _BOLD if color else "", on=color))
+            lines.extend(_no_issues_lines(report))
         lines.extend(_footer(report, plans, color=color))
         return _join(lines)
 
@@ -369,8 +385,9 @@ def _render_verbose(report: Report, *, plans: list[FixPlan] | None) -> str:
     lines = [_brand(report)]
     headline = _headline(report)
     if headline:
-        lines.append(_paint(f"    {headline}" if not report.ascii_mode else headline, _DIM, on=color))
-    lines.extend(_snapshot_lines(report))
+        lines.extend(_paint(line, _DIM, on=color) for line in _fill(headline, indent="    " if not report.ascii_mode else ""))
+    for snapshot in _snapshot_lines(report):
+        lines.extend(_fill(snapshot.strip(), indent="    "))
     lines.append("")
     by = {r.check_id: r for r in report.results}
     tones = {
@@ -383,17 +400,28 @@ def _render_verbose(report: Report, *, plans: list[FixPlan] | None) -> str:
     }
     arrow = _arrow(report.ascii_mode)
     for title_key, ids in _GROUPS:
+        scope = report.facts.get("scope")
+        if isinstance(scope, list) and not any(check_id in scope for check_id in ids):
+            continue
         lines.append(_paint(translate(locale, title_key), _BOLD, on=color))
         for check_id in ids:
             item = by.get(check_id)
             if not item:
                 continue
+            scope = report.facts.get("scope")
+            if isinstance(scope, list) and check_id not in scope:
+                continue
             mark = marks.get(item.status, "?")
             prefix = _paint(f"  {mark}  {check_id:<22}", tones.get(item.status, ""), on=color)
-            lines.append(f"{prefix} {item.finding}")
-            if item.status in {Status.FAIL, Status.WARNING} and item.recommendation:
+            lines.append(prefix.rstrip())
+            lines.extend(_fill(item.finding, indent="      "))
+            if item.explanation:
+                lines.extend(_fill(item.explanation, indent="      "))
+            for evidence in item.evidence[:30]:
+                lines.extend(_fill(evidence, indent="      "))
+            if item.recommendation:
                 rec = f"      {arrow} {item.recommendation}"
-                lines.append(_paint(rec, _CYAN, on=color) if color else rec)
+                lines.extend(_rec_lines(rec.strip(), indent="      ", color=color))
         lines.append("")
 
     if report.diagnoses:
@@ -402,8 +430,7 @@ def _render_verbose(report: Report, *, plans: list[FixPlan] | None) -> str:
         if report.partial:
             lines.extend(_incomplete_block(report))
         else:
-            ok = "✅  " if not report.ascii_mode else ""
-            lines.append(_paint(f"{ok}{translate(locale, 'ui.no_problems')}", _GREEN + _BOLD if color else "", on=color))
+            lines.extend(_no_issues_lines(report))
 
     lines.extend(_footer(report, plans, color=color))
     return _join(lines)
@@ -454,6 +481,8 @@ def render_fix_results(results: list[FixResult], locale: str, *, color: bool = F
         else:
             lines.append(f"  {mark_bad}  {translate(locale, 'fix.done_fail', id=item.id)}")
         lines.append(f"      {item.finding}")
+        key = "fix.verified" if item.verified is True else "fix.unresolved" if item.verified is False else "fix.unverified"
+        lines.extend(_fill(translate(locale, key), indent="      "))
         for ev in item.evidence[:4]:
             lines.append(_paint(f"      {ev}", _DIM, on=color))
         lines.append("")

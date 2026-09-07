@@ -54,11 +54,29 @@ DECKY-PORTS names the process on 8081 and reads Decky `cef_forward`. If the sett
 
 English README aimed at Deck users, not developers. Compact CLI uses emoji marks and plain-language labels. Spanish is opt-in (`--lang es` or `DECKDOCTOR_LANG`).
 
+## 0.4.0 — Symptom workflows
+
+- P0: honest coverage in CLI/JSON/Markdown; invalid filters rejected; service access failure is UNKNOWN; Steam Beta needs an observed frontend failure.
+- P0: scoped fix preconditions, revalidation before mutations, exact Decky service command, Flatpak failures preserved, explicit post-fix verification, machine-readable repair results.
+- P1: hardware/session and installed-command/service observations, native and Flatpak Steam roots. Capability-specific updater adapters and versioned support on Bazzite/CachyOS remain incomplete.
+- P1: ten symptom workflows; library availability, access, free space and mount information; bounded Steam KeyValues parser; first AppID investigation.
+- P1: scoped incident reports, JSON before/after comparisons, terminal progress and adaptable text wrapping.
+- P2: initial battery/input/resume observations and guided manual checks.
+- P3: initial audio/display/system-pressure snapshots. These are not functional tests or performance tuning.
+
+Validation and exact limitations: [SteamOS continuation](audits/2026-09-07-roadmap-progress.md).
+
+## Next priorities
+
+1. Validate distribution-specific updater/service adapters and component versions on Bazzite/CachyOS fixtures and hardware.
+2. Resolve automatic Proton/runtime selection and custom log paths, examine game launch evidence and test more real failure cases.
+3. Add a standalone controller interface and validate it in Gaming Mode, including focus, scaling and navigation without a keyboard.
+4. Expand suspend/battery evidence across boots and implement reproducible workload captures.
+5. Add functional controller/audio/dock tests only with explicit interaction; do not infer success from device presence.
+
 ## Later / maybe never
 
 - Decky plugin frontend that calls the same core (useful, but the CLI remains the source of truth)
-- Hardware module
-- Proton/game diagnosis
 - Hardcoded Steam×Decky incompatibility matrix
 - Telemetry, auto-upload, cloud accounts
 

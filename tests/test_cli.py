@@ -256,3 +256,19 @@ def test_translation_tables_have_matching_keys() -> None:
     from deckdoctor.i18n import MESSAGES
 
     assert set(MESSAGES["en"]) == set(MESSAGES["es"])
+
+
+@pytest.mark.parametrize('selection', ['TYPO', 'SYS-DISK,TYPO', '', ','])
+def test_invalid_selection_is_usage_error(selection: str) -> None:
+    with pytest.raises(SystemExit) as exc:
+        main(['--only', selection])
+    assert exc.value.code == 2
+
+
+def test_unknown_and_skipped_are_visible_in_compact(tmp_path: Path) -> None:
+    report = diagnose(make_ctx(tmp_path, only_ids=frozenset({'SYS-DISK'})))
+    text = render_cli(report)
+    assert 'coverage is limited' in text
+    assert 'skip' in text.lower()
+    report.results[0].status = Status.UNKNOWN
+    assert 'unknown' in render_cli(report).lower()

@@ -32,7 +32,7 @@ The UI is English. Use `--lang es` only if you want Spanish.
 When something is wrong:
 
 ```text
-🩺  DeckDoctor 0.3.6
+🩺  DeckDoctor 0.4.0
     SteamOS 3.8.14 (build 20260624.1, variant steamdeck) · Decky v3.2.6 (stable)
     Internal  81.8 GB free of 224.0 GB
     microSD   292.4 GB free of 469.0 GB
@@ -54,7 +54,7 @@ When something is wrong:
     Diagnose never changes anything. `deckdoctor fix` asks first.
 ```
 
-When everything is fine, you get **All clear** and a ✅.
+The summary distinguishes observed issues, unknown results and skipped checks. No issues detected does not imply that every component was verified.
 
 ---
 
@@ -73,7 +73,7 @@ When everything is fine, you get **All clear** and a ✅.
 
 ## What it can fix (if you ask)
 
-Only a few concrete, reversible things:
+Only a few concrete actions, with their effects and reversibility shown before confirmation:
 
 - Start Decky when it is installed but not running
 - Update Flatpak apps
@@ -83,6 +83,36 @@ Only a few concrete, reversible things:
 It will not reboot the Deck, uninstall apps, or type your password for you.
 
 ---
+
+## Diagnose a symptom
+
+```bash
+deckdoctor --symptom library --lang es
+deckdoctor --appid 268910 --lang es -v
+deckdoctor --symptom controller
+deckdoctor --symptom battery
+deckdoctor --symptom resume -v
+```
+
+Other symptom IDs: `decky`, `updates`, `audio`, `dock`, `performance`. `--appid` selects the game workflow automatically; `--symptom game` requires an AppID. `--only` and `--symptom` are mutually exclusive. Reports retain the selected scope, AppID and network setting. Use `--no-network` for offline diagnostics.
+
+Libraries include registered but missing paths, access/free-space checks and mount metadata when available. Game inspection reads the installed manifest, install folder, explicit compatibility-tool mapping, runtime inventory, prefix presence and default Proton log metadata/header. It does not establish that a game launches or resolve Steam's automatic compatibility selection.
+
+Battery, controller, resume, audio, display and system-pressure checks provide observations and guided next steps. They do not measure button functionality, battery life, audible sound, dock stability or game FPS. The CLI is independent of Decky; a controller-native Gaming Mode interface is still pending.
+
+Save and compare incident reports using identical arguments and language:
+
+```bash
+deckdoctor --symptom library --json -o before.json
+# Reconnect the missing drive, then run:
+deckdoctor --symptom library --json --compare before.json -o after.json
+```
+
+Comparison distinguishes changed status/findings/observations and excludes checks that were unknown or skipped in either report. JSON includes detailed before/after observations. A changed observation is not necessarily an improvement. Markdown reports include scope, coverage, evidence and limitations.
+
+Repairs recheck the printed plan before each mutation and run diagnosis afterwards. JSON `repair_results` separates command success (`ok`) from observed resolution (`verified`: true, false or null). A command that completed without verified resolution returns exit 1. Diagnostic exit codes remain: 0 for no FAIL (inspect coverage), 1 for FAIL, 2 for usage/internal errors.
+
+The release executable is available through the installer above. Contributors can also build it locally with `.venv/bin/python pack/build_pyinstaller.py` and run it as `./dist/deckdoctor`.
 
 ## Where it runs
 

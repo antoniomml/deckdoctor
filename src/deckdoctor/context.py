@@ -73,6 +73,13 @@ class DiagnosticContext:
     reboot_for_update_path: Path = Path("/run/steamos-atomupd/reboot_for_update")
     disk_usage: DiskUsageFn | None = None
     hostname: str = field(default_factory=lambda: os.uname().nodename if hasattr(os, "uname") else "unknown")
+    which: Callable[[str], str | None] = shutil.which
+    appid: int | None = None
+    symptom: str | None = None
+    progress: Callable[[str], None] | None = None
+    sys_root: Path = Path("/sys")
+    proc_root: Path = Path("/proc")
+    media_root: Path = Path("/run/media")
     user: str = ""
     facts: Facts = field(default_factory=Facts)
     locale: Locale = "en"
@@ -125,11 +132,16 @@ class DiagnosticContext:
             return direct
         if alt.exists():
             return alt
+        for suffix in (".local/share/Steam", "data/Steam"):
+            flatpak = self.home / ".var/app/com.valvesoftware.Steam" / suffix
+            if flatpak.exists():
+                return flatpak
         return direct
 
     def read_text(self, path: Path, max_bytes: int = 1_000_000) -> str | None:
         try:
-            data = path.read_bytes()[:max_bytes]
+            with path.open("rb") as stream:
+                data = stream.read(max_bytes)
             return data.decode("utf-8", errors="replace")
         except OSError:
             return None

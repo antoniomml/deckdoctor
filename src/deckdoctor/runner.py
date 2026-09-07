@@ -27,6 +27,8 @@ def run_checks(ctx: DiagnosticContext) -> list[CheckResult]:
             ctx.facts.checks_timed_out.append(check.id)
             results.append(_skip_timeout(ctx, check))
             continue
+        if ctx.progress:
+            ctx.progress(check.id)
         results.append(check.run(ctx))
         if ctx.timed_out():
             timed_out = True
@@ -78,7 +80,8 @@ def diagnose(ctx: DiagnosticContext) -> Report:
         generated_at=ctx.now.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
         results=results,
         diagnoses=diagnoses,
-        facts=ctx.facts.to_dict(),
+        facts={**ctx.facts.to_dict(), "scope": sorted(ctx.only_ids) if ctx.only_ids is not None else "all",
+               "network_enabled": ctx.network_enabled, "appid": ctx.appid, "symptom": ctx.symptom},
         locale=ctx.locale,
         ascii_mode=ctx.ascii_mode,
         partial=ctx.facts.partial,

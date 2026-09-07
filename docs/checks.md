@@ -31,6 +31,20 @@ False-positive risk: `low | medium | high`.
 | FP-UPDATES | Updates available vs **check failed** vs **one remote failed** | CLI | `flatpak remote-ls --updates`; if `-a` dies, probe remaining remotes one by one so Flathub updates are not hidden | medium | low | yes (remote fetch) | no | yes |
 | AUTOFLATPAKS | If plugin installed: remote-ls health + plugin logs | plugin dir + flatpak + logs | detect plugin; `flatpak remote-ls --columns=ref,origin -a`; read plugin log | medium–high | low | yes (same as remote-ls) | no | yes |
 
+## Handheld and game checks (0.4)
+
+| ID | Description | Evidence | Result limits |
+|---|---|---|---|
+| HOST-CAPABILITIES | Hardware, session and installed components | DMI, environment, executable paths, selected service states | Presence does not prove service health; distribution name does not choose behavior |
+| STEAM-LIBRARIES | Registered Steam libraries, including disconnected paths | `libraryfolders.vdf`, directory access, disk usage, `findmnt` | Does not verify game files; inaccessible metadata is UNKNOWN |
+| STEAM-GAME | One game selected by `--appid` | manifest, install directory, explicit compatibility mapping, runtime manifests, prefix and Proton log header | Does not prove launch success or resolve Steam's automatic compatibility choice |
+| HW-BATTERY | Current battery readings | bounded power-supply sysfs fields | Snapshot only; does not estimate battery life or diagnose drain |
+| HW-INPUT | Joystick devices visible to Linux | `/proc/bus/input/devices` | Does not test buttons or distinguish every virtual device |
+| HW-RESUME | Recent suspend/resume evidence | bounded kernel journal from current boot | Does not prove suspend reliability or establish a cause |
+| HW-DISPLAY | DRM connectors and reported modes | DRM sysfs | Does not measure active refresh rate, cable or dock stability |
+| HW-AUDIO | Audio server and default routes | bounded `pactl info` | Does not prove audible output |
+| HW-PERFORMANCE | Load and pressure snapshot | `/proc/loadavg`, PSI CPU/memory/I/O | Does not measure FPS or identify a bottleneck |
+
 ## Considered, not MVP (0.2+)
 
 | ID | Description | Evidence | Command / API | Severity | FP risk | Network | Root | MVP | Notes |
@@ -47,8 +61,8 @@ False-positive risk: `low | medium | high`.
 | FP-FLATHUB | Flathub specifically reachable | remotes + HTTP | HEAD configured Flathub URL | medium | low | yes | no | no | Folded into FP-BASIC/FP-UPDATES |
 | NET-DNS | Resolver works | `getaddrinfo` for github.com | libc, not a scanner | medium | low | yes | no | no | Implied by NET-GITHUB |
 | NET-ATOMUPD | SteamOS update endpoint reachable | client.conf QueryUrl | HEAD QueryUrl | medium | low | yes | no | no | Part of SYS-OS-UPDATER when it talks to the network |
-| HW-* | Battery, SMART, GPU, fan, Wi-Fi perf | sysfs/smartctl | — | — | — | — | — | no | Out of scope (DeckDoc) |
-| GAME-* | Proton, shaders, prefixes | Steam compatdata | — | — | — | — | — | no | Out of scope |
+| HW-SMART/GPU/FAN/WIFI | Deeper hardware health and performance | sysfs/smartctl | — | — | — | — | — | no | Requires careful hardware-specific thresholds |
+| STEAM-LAUNCH | Full launch/runtime diagnosis | Steam logs and compatibility metadata | — | — | — | — | — | no | First bounded AppID inspection shipped as STEAM-GAME |
 
 ## Notes for implementers
 

@@ -6,6 +6,7 @@ from pathlib import Path
 from deckdoctor.checks._util import format_bytes, result
 from deckdoctor.context import DiagnosticContext
 from deckdoctor.models import CheckResult, EvidenceSource, Severity, Status
+from deckdoctor.steam import library_roots
 
 ID = "SYS-DISK"
 TITLE = "Disk space"
@@ -110,7 +111,7 @@ def _vdf_library_roots(ctx: DiagnosticContext) -> list[Path]:
 def _extra_library_paths(ctx: DiagnosticContext) -> list[Path]:
     """Steam libraries and removable media. Skip fuse/tmp mounts — those false-fail."""
     found = list(_vdf_library_roots(ctx))
-    media = Path("/run/media") / ctx.user
+    media = ctx.media_root / ctx.user
     if ctx.exists(media):
         try:
             found.extend(p for p in media.iterdir() if p.is_dir())
@@ -152,9 +153,12 @@ def _record_snapshot(ctx: DiagnosticContext, mounts: list[tuple[str, int, int, i
         _path, total, _used, free, _st, _sv = sd_entry
         ctx.facts.storage_sd = {"path": _path, "free": free, "total": total}
 
+    roots, catalog_readable = library_roots(ctx)
+    if not catalog_readable:
+        return
     games_internal = 0
     games_sd = 0
-    for root in _vdf_library_roots(ctx):
+    for root in roots:
         n = _count_games(ctx, root)
         if _is_sd_path(root):
             games_sd += n

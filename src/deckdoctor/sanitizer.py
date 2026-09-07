@@ -135,7 +135,7 @@ class Sanitizer:
         if isinstance(value, str):
             return self.apply(value)
         if isinstance(value, dict):
-            return {str(k): self.apply_obj(v) for k, v in value.items()}
+            return {self.apply(str(k)): self.apply_obj(v) for k, v in value.items()}
         if isinstance(value, list):
             return [self.apply_obj(item) for item in value]
         if isinstance(value, tuple):

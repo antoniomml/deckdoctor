@@ -68,7 +68,7 @@ def test_autoflatpaks_remote_names_the_remote() -> None:
     assert "flatpak remote-delete --user onepassword-origin" in rec
 
 
-def test_steam_beta_likely() -> None:
+def test_healthy_steam_beta_is_not_a_diagnosis() -> None:
     facts = Facts(
         plugin_loader_present=True,
         decky_service_active="active",
@@ -78,7 +78,7 @@ def test_steam_beta_likely() -> None:
     )
     results = [_res("DECKY-LOGS", Status.PASS)]
     diags = correlate(results, facts)
-    assert any("Steam" in d.title or "frontend" in d.title.lower() for d in diags)
+    assert not diags
 
 
 def test_overlay_updater_correlation() -> None:

@@ -10,9 +10,10 @@ from pathlib import Path
 from typing import TextIO
 
 from deckdoctor import __version__
+from deckdoctor.checks import ALL_CHECKS
 from deckdoctor.command import CommandRunner
 from deckdoctor.context import DiagnosticContext, default_home, parse_only_ids
-from deckdoctor.fixes import KNOWN_FIX_IDS, apply_plans, collect_plans
+from deckdoctor.fixes import KNOWN_FIX_IDS, apply_plans, collect_plans, verify_results
 from deckdoctor.http import HttpClient, system_ca_file
 from deckdoctor.i18n import detect_locale, translate
 from deckdoctor.models import FixPlan, Report, Status
@@ -20,6 +21,7 @@ from deckdoctor.renderer import color_enabled, render_checks_catalog, render_cli
 from deckdoctor.report import render_markdown
 from deckdoctor.runner import DEFAULT_TIMEOUT_SECONDS, diagnose
 from deckdoctor.sanitizer import Sanitizer
+from deckdoctor.workflows import SYMPTOMS, compare
 
 
 def build_parser(locale: str | None = None) -> argparse.ArgumentParser:
@@ -37,6 +39,9 @@ def build_parser(locale: str | None = None) -> argparse.ArgumentParser:
     parser.add_argument("--no-network", action="store_true", help=t("cli.no_network"))
     parser.add_argument("--output", "-o", type=Path, default=None, help=t("cli.output"))
     parser.add_argument("--ascii", "--plain", action="store_true", dest="ascii", help=t("cli.ascii"))
+    parser.add_argument("--symptom", choices=sorted(SYMPTOMS), help=t("cli.symptom"))
+    parser.add_argument("--appid", type=int, help=t("cli.appid"))
+    parser.add_argument("--compare", type=Path, help=t("cli.compare"))
     parser.add_argument("--only", default=None, help=t("cli.only"))
     parser.add_argument(
         "--timeout",
@@ -120,7 +125,7 @@ def confirm_fix(
 def _print_report(report: Report, sanitizer: Sanitizer, plans: list[FixPlan], *, as_json: bool) -> None:
     if as_json:
         payload = sanitizer.apply_obj(report.to_dict())
-        payload["fixes"] = [
+        payload["fixes"] = sanitizer.apply_obj([
             {
                 "id": p.id,
                 "title": p.title,
@@ -128,7 +133,7 @@ def _print_report(report: Report, sanitizer: Sanitizer, plans: list[FixPlan], *,
                 "needs_root": p.needs_root,
             }
             for p in plans
-        ]
+        ])
         print(json.dumps(payload, indent=2, ensure_ascii=False))
         return
     print(sanitizer.apply(render_cli(report, plans=plans)), end="")
@@ -183,58 +188,118 @@ def _main(argv: list[str] | None) -> int:
             return time.monotonic() + float(args.timeout)
         return None
 
+    only_ids = parse_only_ids(args.only)
+    if args.only is not None:
+        unknown = (only_ids or frozenset()) - {c.id for c in ALL_CHECKS}
+        if not only_ids or unknown:
+            parser.error(translate(locale, "cli.invalid_only", ids=", ".join(sorted(unknown)) or args.only))
+
+    if args.appid is not None and args.appid <= 0:
+        parser.error("--appid must be a positive integer")
+    if args.symptom == "game" and args.appid is None:
+        parser.error("--symptom game requires --appid")
+    if args.symptom and args.only is not None:
+        parser.error("--symptom and --only cannot be combined")
+    if args.appid is not None and args.symptom not in {None, "game"}:
+        parser.error("--appid requires --symptom game or no symptom")
+    if args.appid is not None and only_ids is not None and "STEAM-GAME" not in only_ids:
+        parser.error("--only must include STEAM-GAME when using --appid")
+    if args.symptom:
+        only_ids = SYMPTOMS[args.symptom]
+    elif args.appid is not None and only_ids is None:
+        only_ids = SYMPTOMS["game"]
+    if args.compare and args.command == "fix":
+        parser.error("--compare is for diagnose/report; fix compares its own before/after")
+    previous = None
+    if args.compare:
+        try:
+            with args.compare.open(encoding="utf-8") as stream:
+                previous = json.load(stream)
+        except (OSError, ValueError) as exc:
+            parser.error(str(exc))
+
     deadline = _deadline()
     color = _use_color(args)
     ctx = build_context(
         network=not args.no_network,
         locale=locale,
         ascii_mode=bool(args.ascii),
-        only_ids=parse_only_ids(args.only),
+        only_ids=only_ids,
         deadline=deadline,
         verbose=bool(args.verbose),
         color=color,
     )
+    ctx.appid = args.appid
+    ctx.symptom = args.symptom
+    if sys.stderr.isatty():
+        ctx.progress = lambda check_id: print(f"[{check_id}]", file=sys.stderr, flush=True)
     report = diagnose(ctx)
     sanitizer = Sanitizer(user=ctx.user, home=str(ctx.home), hostname=ctx.hostname)
+    if args.compare:
+        try:
+            report.comparison = compare(report, previous, sanitizer)
+        except ValueError as exc:
+            parser.error(str(exc))
     plans = collect_plans(ctx, report)
 
     if args.command == "fix":
         plans, code = _filter_plans(plans, args.target, locale)
         if code:
             return code
-        print(sanitizer.apply(render_fix_plan(plans, locale, ascii_mode=bool(args.ascii), color=color)), end="")
+        print(sanitizer.apply(render_fix_plan(plans, locale, ascii_mode=bool(args.ascii), color=color)), end="", file=sys.stderr if args.json else sys.stdout)
         if not plans:
+            if args.json:
+                _print_report(report, sanitizer, plans, as_json=True)
+            if args.output:
+                _save_report(report, sanitizer, args.output, as_json=bool(args.json))
             return 0
         if not confirm_fix(yes=bool(args.yes), locale=locale):
+            if args.json:
+                _print_report(report, sanitizer, plans, as_json=True)
+            if args.output:
+                _save_report(report, sanitizer, args.output, as_json=bool(args.json))
             return 0
         results = apply_plans(ctx, plans)
-        print(sanitizer.apply(render_fix_results(results, locale, color=color, ascii_mode=bool(args.ascii))), end="")
         print(translate(locale, "fix.rediagnose"), file=sys.stderr)
         ctx2 = build_context(
             network=not args.no_network,
             locale=locale,
             ascii_mode=bool(args.ascii),
-            only_ids=parse_only_ids(args.only),
+            only_ids=only_ids,
             deadline=_deadline(),
             verbose=bool(args.verbose),
             color=color,
         )
+        ctx2.appid = args.appid
+        ctx2.symptom = args.symptom
+        ctx2.progress = ctx.progress
         report2 = diagnose(ctx2)
+        report2.comparison = compare(report2, report.to_dict())
+        verify_results(plans, results, report2)
+        report2.repair_results = results
+        print(sanitizer.apply(render_fix_results(results, locale, color=color, ascii_mode=bool(args.ascii))), end="", file=sys.stderr if args.json else sys.stdout)
         plans2 = collect_plans(ctx2, report2)
         _print_report(report2, sanitizer, plans2, as_json=bool(args.json))
-        if any(not item.ok for item in results):
+        if args.output:
+            _save_report(report2, sanitizer, args.output, as_json=bool(args.json))
+        if any(not item.ok or item.verified is not True for item in results):
             return 1
         return _exit_code([r.status for r in report2.results])
 
     _print_report(report, sanitizer, plans, as_json=bool(args.json))
 
-    if args.command == "report":
-        path = args.output or Path.cwd() / "deckdoctor-report.md"
-        body = render_markdown(report, sanitizer)
-        path.write_text(body, encoding="utf-8")
-        print(translate(locale, "ui.wrote", path=path), file=sys.stderr)
+    if args.command == "report" or args.output:
+        path = args.output or Path.cwd() / ("deckdoctor-report.json" if args.json else "deckdoctor-report.md")
+        _save_report(report, sanitizer, path, as_json=bool(args.json))
 
     return _exit_code([r.status for r in report.results])
+
+
+
+def _save_report(report: Report, sanitizer: Sanitizer, path: Path, *, as_json: bool) -> None:
+    body = json.dumps(sanitizer.apply_obj(report.to_dict()), indent=2, ensure_ascii=False) if as_json else render_markdown(report, sanitizer)
+    path.write_text(body, encoding="utf-8")
+    print(translate(report.locale, "ui.wrote", path=path), file=sys.stderr)
 
 
 def main(argv: list[str] | None = None) -> int:

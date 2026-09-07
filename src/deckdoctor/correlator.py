@@ -65,7 +65,7 @@ def correlate(results: list[CheckResult], facts: Facts, locale: str = "en") -> l
     cef_ok = bool(facts.cef_json_ok)
     port_conflict = bool(facts.port_8080_conflict)
     steam_beta = facts.steam_channel == "beta"
-    logs = by.get("DECKY-LOGS")
+    frontend = by.get("DECKY-FRONTEND")
     log_sigs = set(facts.decky_log_signatures)
 
     if port_conflict and facts.plugin_loader_present:
@@ -85,7 +85,8 @@ def correlate(results: list[CheckResult], facts: Facts, locale: str = "en") -> l
         and cef_ok
         and steam_beta
         and "inject" not in log_sigs
-        and (logs is None or logs.status in {Status.PASS, Status.WARNING, Status.SKIPPED})
+        and frontend is not None
+        and frontend.status == Status.FAIL
     ):
         found.append(
             Diagnosis(

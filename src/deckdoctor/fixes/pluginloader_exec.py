@@ -4,13 +4,14 @@ import os
 
 from deckdoctor.context import DiagnosticContext
 from deckdoctor.fixes.executor import FixExecutor
-from deckdoctor.models import FixPlan, FixResult, Report
+from deckdoctor.models import FixPlan, FixResult, Report, Status
 
 ID = "pluginloader-exec"
 
 
 def plan(ctx: DiagnosticContext, report: Report) -> FixPlan | None:
-    del report
+    if not any(r.check_id == "DECKY-INSTALL" and r.status == Status.FAIL for r in report.results):
+        return None
     loader = ctx.plugin_loader
     if not ctx.exists(loader):
         return None

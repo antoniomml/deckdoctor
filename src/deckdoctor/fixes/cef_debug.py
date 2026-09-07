@@ -2,14 +2,16 @@ from __future__ import annotations
 
 from deckdoctor.context import DiagnosticContext
 from deckdoctor.fixes.executor import FixExecutor
-from deckdoctor.models import FixPlan, FixResult, Report
+from deckdoctor.models import FixPlan, FixResult, Report, Status
 
 ID = "cef-debug"
 
 
 def plan(ctx: DiagnosticContext, report: Report) -> FixPlan | None:
-    del report
-    if ctx.facts.decky_installed is False:
+    frontend = next((r for r in report.results if r.check_id == "DECKY-FRONTEND"), None)
+    if frontend is None or frontend.status not in {Status.WARNING, Status.FAIL}:
+        return None
+    if ctx.facts.decky_installed is not True or not ctx.exists(ctx.steam_root):
         return None
     path = ctx.steam_root / ".cef-enable-remote-debugging"
     if ctx.exists(path):

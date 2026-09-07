@@ -72,6 +72,11 @@ def run(ctx: DiagnosticContext) -> CheckResult:
         summary = first_line(proc.stdout or proc.stderr) or f"exit {proc.exit_code}"
         attempts.append(f"{' '.join(argv)} → exit {proc.exit_code}: {summary}")
 
+        if any(marker in blob for marker in ("g_is_dbus_connection", "failed to connect to bus", "operation not permitted", "permission denied")):
+            ctx.facts.os_updater = "unknown"
+            return result(ID, title, Status.UNKNOWN, ctx.tr("ui.access_restricted"),
+                          evidence=attempts, source=EvidenceSource.OS_METADATA)
+
         if proc.timed_out:
             ctx.facts.os_updater = "timeout"
             return result(
