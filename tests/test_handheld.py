@@ -210,7 +210,7 @@ def test_narrow_summary_wraps_and_shows_scope(tmp_path: Path, monkeypatch: pytes
 def test_json_fix_has_one_report_and_verified_result(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
     home = make_home(tmp_path, cef=False)
     monkeypatch.setattr('deckdoctor.cli.build_context', lambda **kwargs: make_ctx(tmp_path, home=home, only_ids=kwargs['only_ids']))
-    monkeypatch.setattr('deckdoctor.cli.apply_plans', lambda ctx, plans: apply_plans(ctx, plans, FakeFixExecutor()))
+    monkeypatch.setattr('deckdoctor.cli.apply_plans', lambda ctx, plans, **kwargs: apply_plans(ctx, plans, FakeFixExecutor(), **kwargs))
     assert main(['fix', 'cef-debug', '--json', '--yes']) == 0
     payload = json.loads(capsys.readouterr().out)
     assert payload['repair_results'][0]['ok'] is True

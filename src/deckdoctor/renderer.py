@@ -230,8 +230,9 @@ def _footer(report: Report, plans: list[FixPlan] | None, *, color: bool) -> list
     scope_text = ", ".join(scope) if isinstance(scope, list) else str(scope)
     lines.extend(_fill(translate(locale, "ui.scope", scope=scope_text, network=translate(locale, "ui.network_on" if report.facts.get("network_enabled") else "ui.network_off")), indent=pad))
     if report.comparison is not None:
-        lines.extend(_fill(translate(locale, "ui.comparison", count=len(report.comparison)), indent=pad))
-        for change in report.comparison:
+        changes = [c for c in report.comparison if report.verbose or c["before"] != c["after"]]
+        lines.extend(_fill(translate(locale, "ui.comparison", count=len(changes)), indent=pad))
+        for change in changes:
             lines.extend(_fill(f"{change['id']}: {change['before']} -> {change['after']}", indent=pad))
     lines.append(_hint("report", translate(locale, "ui.report_hint"), ascii_mode=report.ascii_mode))
     lines.append(_hint("verbose", translate(locale, "ui.verbose_hint"), ascii_mode=report.ascii_mode))
@@ -472,7 +473,7 @@ def render_fix_plan(plans: list[FixPlan], locale: str, *, ascii_mode: bool = Fal
 
 
 def render_fix_results(results: list[FixResult], locale: str, *, color: bool = False, ascii_mode: bool = False) -> str:
-    lines = [translate(locale, "fix.applying", count=len(results)), ""]
+    lines = [translate(locale, "fix.results", count=len(results)), ""]
     mark_ok = "OK" if ascii_mode else _paint("✅", _GREEN, on=color)
     mark_bad = "X" if ascii_mode else _paint("❌", _RED, on=color)
     for item in results:

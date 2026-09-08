@@ -49,8 +49,8 @@ _EN: dict[str, str] = {
     "ui.incomplete.rec": "Run `deckdoctor` again. This pass did not finish.",
     "ui.report_hint": "deckdoctor report     Discord report",
     "ui.verbose_hint": "deckdoctor -v         every check",
-    "ui.fix_hint": "deckdoctor fix        {count} safe plan(s)",
-    "ui.fix_none": "deckdoctor fix        nothing safe to apply",
+    "ui.fix_hint": "deckdoctor fix        {count} available plan(s)",
+    "ui.fix_none": "deckdoctor fix        no fixes available",
     "ui.readonly": "Diagnose never changes anything. `deckdoctor fix` asks first.",
     "ui.wrote": "Wrote {path}",
     "ui.internal_error": "deckdoctor: internal error: {exc}",
@@ -251,8 +251,8 @@ _ES: dict[str, str] = {
     "ui.incomplete.rec": "Vuelve a ejecutar `deckdoctor`. Esta pasada no terminó.",
     "ui.report_hint": "deckdoctor report     informe para Discord",
     "ui.verbose_hint": "deckdoctor -v         cada comprobación",
-    "ui.fix_hint": "deckdoctor fix        {count} plan(es) seguro(s)",
-    "ui.fix_none": "deckdoctor fix        nada seguro que aplicar",
+    "ui.fix_hint": "deckdoctor fix        {count} plan(es) disponible(s)",
+    "ui.fix_none": "deckdoctor fix        ningún arreglo disponible",
     "ui.readonly": "Diagnosticar no cambia nada. `deckdoctor fix` pregunta antes.",
     "ui.wrote": "Escrito {path}",
     "ui.internal_error": "deckdoctor: error interno: {exc}",
@@ -412,6 +412,19 @@ _ES: dict[str, str] = {
         "DeckDoctor no borra archivos del overlay."
     ),
 }
+
+_EN.update({
+    "progress.check": "{done}/{total} checked · {title}",
+    "fix.progress.checking": "Checking prerequisites: {title}…",
+    "fix.progress.running": "Running: {title}… This may take several minutes.",
+    "fix.results": "Fix results ({count})",
+})
+_ES.update({
+    "progress.check": "{done}/{total} revisadas · {title}",
+    "fix.progress.checking": "Comprobando requisitos: {title}…",
+    "fix.progress.running": "En ejecución: {title}… Puede tardar varios minutos.",
+    "fix.results": "Resultados de los arreglos ({count})",
+})
 
 MESSAGES: dict[str, dict[str, str]] = {
     "en": {**_EN, **CHECK_EN, **HANDHELD_EN},

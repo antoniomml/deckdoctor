@@ -17,9 +17,10 @@ from deckdoctor.fixes import KNOWN_FIX_IDS, apply_plans, collect_plans, verify_r
 from deckdoctor.http import HttpClient, system_ca_file
 from deckdoctor.i18n import detect_locale, translate
 from deckdoctor.models import FixPlan, Report, Status
+from deckdoctor.progress import diagnose_with_progress as diagnose
 from deckdoctor.renderer import color_enabled, render_checks_catalog, render_cli, render_fix_plan, render_fix_results
 from deckdoctor.report import render_markdown
-from deckdoctor.runner import DEFAULT_TIMEOUT_SECONDS, diagnose
+from deckdoctor.runner import DEFAULT_TIMEOUT_SECONDS
 from deckdoctor.sanitizer import Sanitizer
 from deckdoctor.workflows import SYMPTOMS, compare
 
@@ -231,8 +232,6 @@ def _main(argv: list[str] | None) -> int:
     )
     ctx.appid = args.appid
     ctx.symptom = args.symptom
-    if sys.stderr.isatty():
-        ctx.progress = lambda check_id: print(f"[{check_id}]", file=sys.stderr, flush=True)
     report = diagnose(ctx)
     sanitizer = Sanitizer(user=ctx.user, home=str(ctx.home), hostname=ctx.hostname)
     if args.compare:
@@ -259,7 +258,12 @@ def _main(argv: list[str] | None) -> int:
             if args.output:
                 _save_report(report, sanitizer, args.output, as_json=bool(args.json))
             return 0
-        results = apply_plans(ctx, plans)
+        print(translate(locale, "fix.applying", count=len(plans)), file=sys.stderr, flush=True)
+
+        def fix_progress(phase: str, plan: FixPlan) -> None:
+            print(translate(locale, f"fix.progress.{phase}", title=plan.title), file=sys.stderr, flush=True)
+
+        results = apply_plans(ctx, plans, progress=fix_progress)
         print(translate(locale, "fix.rediagnose"), file=sys.stderr)
         ctx2 = build_context(
             network=not args.no_network,

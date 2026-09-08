@@ -36,6 +36,8 @@ def apply_plans(
     ctx: DiagnosticContext,
     plans: list[FixPlan],
     executor: FixExecutor | None = None,
+    *,
+    progress: Callable[[str, FixPlan], None] | None = None,
 ) -> list[FixResult]:
     runner = executor or FixExecutor()
     appliers = {fid: apply for fid, _plan, apply in FIXES}
@@ -49,11 +51,15 @@ def apply_plans(
         # Consent applies to the printed plan; recheck before each mutation.
         from deckdoctor.runner import diagnose
 
+        if progress:
+            progress("checking", plan)
         fresh = replace(ctx, facts=Facts(), _cmd_cache={}, deadline=time.monotonic() + 60, progress=None)
         current = planners[plan.id](fresh, diagnose(fresh))
         if current is None or current != plan:
             results.append(FixResult(plan.id, False, ctx.tr("fix.preconditions_changed")))
             continue
+        if progress:
+            progress("running", plan)
         results.append(fn(fresh, runner))
     return results
 
