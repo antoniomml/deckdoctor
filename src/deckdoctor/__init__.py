@@ -1,3 +1,3 @@
 """DeckDoctor — diagnostics and opt-in fixes for SteamOS, Decky Loader, plugins, and Flatpak."""
 
-__version__ = "0.4.0"
+__version__ = "0.4.1"
