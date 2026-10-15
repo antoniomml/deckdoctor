@@ -57,8 +57,8 @@ def build_parser(locale: str | None = None) -> argparse.ArgumentParser:
     parser.add_argument(
         "command",
         nargs="?",
-        default="diagnose",
-        choices=["diagnose", "report", "fix", "checks"],
+        default=None,
+        choices=["tui", "diagnose", "report", "fix", "checks"],
         help=t("cli.command"),
     )
     parser.add_argument("target", nargs="?", default=None, help=t("cli.target"))
@@ -94,6 +94,32 @@ def _exit_code(status_values: list[Status]) -> int:
     if any(s == Status.FAIL for s in status_values):
         return 1
     return 0
+
+
+def _wants_tui(args: argparse.Namespace) -> bool:
+    """The dashboard is the default only for a person at a capable terminal; scripts keep text output."""
+    if args.json or args.output or args.compare or args.verbose or args.ascii or args.no_color:
+        return False
+    if os.environ.get("DECKDOCTOR_NO_TUI") or os.environ.get("TERM", "dumb") in {"", "dumb"}:
+        return False
+    return sys.stdin.isatty() and sys.stdout.isatty()
+
+
+def _run_tui(args: argparse.Namespace, locale: str, only_ids: frozenset[str] | None) -> int | None:
+    """Return the dashboard exit code, or None when the text diagnosis should run instead."""
+    from deckdoctor import tui
+
+    if not tui.available():
+        print(translate(locale, "tui.unavailable"), file=sys.stderr)
+        return None
+    return tui.run(
+        locale=locale,
+        network=not args.no_network,
+        only_ids=only_ids,
+        symptom=args.symptom,
+        appid=args.appid,
+        timeout=float(args.timeout or 0),
+    )
 
 
 def _use_color(args: argparse.Namespace) -> bool:
@@ -209,6 +235,14 @@ def _main(argv: list[str] | None) -> int:
         only_ids = SYMPTOMS[args.symptom]
     elif args.appid is not None and only_ids is None:
         only_ids = SYMPTOMS["game"]
+    if args.command == "tui" or (args.command is None and _wants_tui(args)):
+        if args.json or args.output or args.compare:
+            parser.error("tui does not take --json, --output or --compare")
+        code = _run_tui(args, locale, only_ids)
+        if code is not None:
+            return code
+    if args.command in {None, "tui"}:
+        args.command = "diagnose"
     if args.compare and args.command == "fix":
         parser.error("--compare is for diagnose/report; fix compares its own before/after")
     previous = None

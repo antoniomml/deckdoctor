@@ -7,20 +7,22 @@ Build (from repo root, on Linux x86_64):
     pyinstaller pack/deckdoctor.spec
 """
 
-from PyInstaller.utils.hooks import collect_submodules
+from PyInstaller.utils.hooks import collect_data_files, collect_submodules
 
-hidden = collect_submodules("deckdoctor")
+# Textual and Rich import widgets, themes and unicode tables lazily by name.
+hidden = collect_submodules("deckdoctor") + collect_submodules("textual") + collect_submodules("rich")
+datas = collect_data_files("textual")
 
 a = Analysis(
     ["../src/deckdoctor/__main__.py"],
     pathex=[],
     binaries=[],
-    datas=[],
+    datas=datas,
     hiddenimports=hidden,
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
-    excludes=[],
+    excludes=["tree_sitter", "tree_sitter_languages", "tkinter"],
     noarchive=False,
 )
 pyz = PYZ(a.pure)

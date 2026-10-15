@@ -9,13 +9,13 @@ _BASE = {'HOST-CAPABILITIES', 'SYS-OS-VERSION', 'SYS-DISK', 'STEAM-CLIENT'}
 SYMPTOMS: dict[str, frozenset[str]] = {
     'dock': frozenset({'HOST-CAPABILITIES', 'HW-DISPLAY', 'HW-AUDIO'}),
     'audio': frozenset({'HOST-CAPABILITIES', 'HW-AUDIO'}),
-    'performance': frozenset(_BASE | {'HW-PERFORMANCE', 'HW-BATTERY'}),
+    'performance': frozenset(_BASE | {'HW-PERFORMANCE', 'HW-BATTERY', 'HW-THERMAL'}),
     'decky': frozenset(_BASE | {'DECKY-INSTALL', 'DECKY-SERVICE', 'DECKY-PORTS', 'DECKY-LOGS', 'DECKY-FRONTEND', 'NET-GITHUB'}),
     'updates': frozenset(_BASE | {'SYS-OS-CHANNEL', 'SYS-OS-UPDATER', 'SYS-OS-REBOOT', 'SYS-OVERLAY', 'SYS-TIME', 'FP-BASIC', 'FP-UPDATES', 'FP-EOL'}),
-    'library': frozenset(_BASE | {'STEAM-LIBRARIES'}),
+    'library': frozenset(_BASE | {'STEAM-LIBRARIES', 'STEAM-STORAGE'}),
     'game': frozenset(_BASE | {'STEAM-LIBRARIES', 'STEAM-GAME'}),
     'controller': frozenset(_BASE | {'HW-INPUT'}),
-    'battery': frozenset({'HOST-CAPABILITIES', 'HW-BATTERY'}),
+    'battery': frozenset({'HOST-CAPABILITIES', 'HW-BATTERY', 'HW-THERMAL'}),
     'resume': frozenset({'HOST-CAPABILITIES', 'HW-BATTERY', 'HW-INPUT', 'HW-RESUME'}),
 }
 

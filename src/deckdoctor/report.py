@@ -10,6 +10,16 @@ def render_markdown(report: Report, sanitizer: Sanitizer) -> str:
     return sanitizer.apply(raw)
 
 
+def _gb(value: object) -> str:
+    return f"{value / 1e9:.1f} GB" if isinstance(value, int | float) else "?"
+
+
+def _disk(info: object) -> str:
+    if not isinstance(info, dict):
+        return "`not found`"
+    return f"`{info.get('path', '?')}` {_gb(info.get('free'))} free of {_gb(info.get('total'))}"
+
+
 def _markdown(report: Report) -> str:
     def t(key: str, **kwargs: object) -> str:
         return translate(report.locale, key, **kwargs)
@@ -22,7 +32,7 @@ def _markdown(report: Report) -> str:
         t("report.generated", when=report.generated_at),
         t("report.posture"),
         t("ui.scope", scope=facts.get("scope", "unknown"), network=facts.get("network_enabled", "unknown")),
-        "Coverage: " + str(report.to_dict()["coverage"]),
+        "Coverage: " + ", ".join(f"{k} {v}" for k, v in report.to_dict()["coverage"].items()),
         t("ui.partial") if report.partial else "",
         t("ui.comparison", count=len(report.comparison)) if report.comparison is not None else "",
         t("report.sanitise"),
@@ -36,8 +46,8 @@ def _markdown(report: Report) -> str:
         f"- Steam client: build `{facts.get('steam_version', 'unknown')}` channel `{facts.get('steam_channel', 'unknown')}`",
         f"- Decky: `{facts.get('decky_version', 'unknown')}` channel `{facts.get('decky_channel', 'unknown')}`",
         f"- PluginLoader present: `{facts.get('plugin_loader_present', 'unknown')}`",
-        f"- Internal storage: `{facts.get('storage_internal', {})}`",
-        f"- microSD: `{facts.get('storage_sd', 'not inserted')}`",
+        f"- Internal storage: {_disk(facts.get('storage_internal'))}",
+        f"- microSD: {_disk(facts.get('storage_sd'))}",
         f"- Steam games: `{facts.get('steam_game_count', 'unknown')}` (internal `{facts.get('steam_games_internal', 'unknown')}`, microSD `{facts.get('steam_games_sd', 'unknown')}`)",
         "",
         t("report.summary"),

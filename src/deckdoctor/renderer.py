@@ -32,16 +32,19 @@ _HINT_EMOJI = {
     "report": "📄",
     "verbose": "🔍",
     "fix": "🔧",
+    "tui": "📊",
 }
 
 _GROUPS = (
-    ("group.handheld", ("HOST-CAPABILITIES", "STEAM-LIBRARIES", "STEAM-GAME", "HW-BATTERY", "HW-INPUT", "HW-RESUME", "HW-DISPLAY", "HW-AUDIO", "HW-PERFORMANCE")),
+    ("group.handheld", ("HOST-CAPABILITIES", "STEAM-LIBRARIES", "STEAM-STORAGE", "STEAM-GAME", "HW-BATTERY", "HW-THERMAL", "HW-INPUT", "HW-RESUME", "HW-DISPLAY", "HW-AUDIO", "HW-PERFORMANCE")),
     ("group.system", ("SYS-OS-VERSION", "SYS-OS-CHANNEL", "SYS-OS-UPDATER", "SYS-OS-REBOOT", "SYS-OVERLAY", "SYS-DISK", "SYS-TIME", "STEAM-CLIENT")),
     ("group.decky", ("DECKY-INSTALL", "DECKY-SERVICE", "DECKY-PORTS", "DECKY-FRONTEND", "DECKY-LOGS")),
     ("group.plugins", ("PLUGIN-INVENTORY", "PLUGIN-REMOTE-BIN", "PLUGIN-STORE-UPDATES", "AUTOFLATPAKS")),
     ("group.flatpak", ("FP-BASIC", "FP-UPDATES", "FP-EOL")),
     ("group.network", ("NET-GITHUB", "NET-STORE")),
 )
+
+CHECK_GROUPS = _GROUPS
 
 _RESET = "\033[0m"
 _BOLD = "\033[1m"
@@ -234,6 +237,7 @@ def _footer(report: Report, plans: list[FixPlan] | None, *, color: bool) -> list
         lines.extend(_fill(translate(locale, "ui.comparison", count=len(changes)), indent=pad))
         for change in changes:
             lines.extend(_fill(f"{change['id']}: {change['before']} -> {change['after']}", indent=pad))
+    lines.append(_hint("tui", translate(locale, "ui.tui_hint"), ascii_mode=report.ascii_mode))
     lines.append(_hint("report", translate(locale, "ui.report_hint"), ascii_mode=report.ascii_mode))
     lines.append(_hint("verbose", translate(locale, "ui.verbose_hint"), ascii_mode=report.ascii_mode))
     if plans:

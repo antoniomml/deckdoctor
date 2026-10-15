@@ -6,6 +6,8 @@ from typing import Literal
 from deckdoctor.i18n_checks import CHECK_EN, CHECK_ES
 from deckdoctor.i18n_handheld import EN as HANDHELD_EN
 from deckdoctor.i18n_handheld import ES as HANDHELD_ES
+from deckdoctor.i18n_tui import EN as TUI_EN
+from deckdoctor.i18n_tui import ES as TUI_ES
 
 Locale = Literal["en", "es"]
 
@@ -14,7 +16,7 @@ _EN: dict[str, str] = {
     "cli.json": "Print machine-readable JSON",
     "cli.no_network": "Skip checks that need the internet",
     "cli.output": "Save the diagnosis to this path (Markdown, or JSON with --json)",
-    "cli.command": "diagnose (default), report, fix, or checks",
+    "cli.command": "tui (default on a terminal), diagnose, report, fix, or checks",
     "cli.target": "Optional fix id (only with the fix command)",
     "cli.ascii": "Use ASCII status marks (OK/X/!) instead of Unicode",
     "cli.only": "Run only these check IDs (comma-separated)",
@@ -47,6 +49,7 @@ _EN: dict[str, str] = {
     "ui.partial": "Stopped early: some checks did not run (time limit).",
     "ui.incomplete": "Incomplete",
     "ui.incomplete.rec": "Run `deckdoctor` again. This pass did not finish.",
+    "ui.tui_hint": "deckdoctor tui        live dashboard, games and storage",
     "ui.report_hint": "deckdoctor report     Discord report",
     "ui.verbose_hint": "deckdoctor -v         every check",
     "ui.fix_hint": "deckdoctor fix        {count} available plan(s)",
@@ -216,7 +219,7 @@ _ES: dict[str, str] = {
     "cli.json": "Imprimir JSON legible por máquina",
     "cli.no_network": "Omitir comprobaciones que necesitan Internet",
     "cli.output": "Ruta del informe (comando report)",
-    "cli.command": "diagnose (por defecto), report, fix o checks",
+    "cli.command": "tui (por defecto en un terminal), diagnose, report, fix o checks",
     "cli.target": "Id de arreglo (solo con el comando fix)",
     "cli.ascii": "Usar marcas ASCII (OK/X/!) en lugar de Unicode",
     "cli.only": "Ejecutar solo estos IDs de check (separados por comas)",
@@ -249,6 +252,7 @@ _ES: dict[str, str] = {
     "ui.partial": "Se paró antes de tiempo: algunas comprobaciones no se ejecutaron.",
     "ui.incomplete": "Incompleto",
     "ui.incomplete.rec": "Vuelve a ejecutar `deckdoctor`. Esta pasada no terminó.",
+    "ui.tui_hint": "deckdoctor tui        panel en vivo, juegos y almacenamiento",
     "ui.report_hint": "deckdoctor report     informe para Discord",
     "ui.verbose_hint": "deckdoctor -v         cada comprobación",
     "ui.fix_hint": "deckdoctor fix        {count} plan(es) disponible(s)",
@@ -427,8 +431,8 @@ _ES.update({
 })
 
 MESSAGES: dict[str, dict[str, str]] = {
-    "en": {**_EN, **CHECK_EN, **HANDHELD_EN},
-    "es": {**_ES, **CHECK_ES, **HANDHELD_ES},
+    "en": {**_EN, **CHECK_EN, **HANDHELD_EN, **TUI_EN},
+    "es": {**_ES, **CHECK_ES, **HANDHELD_ES, **TUI_ES},
 }
 
 

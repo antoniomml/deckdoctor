@@ -66,13 +66,24 @@ English README aimed at Deck users, not developers. Compact CLI uses emoji marks
 
 Validation and exact limitations: [SteamOS continuation](audits/2026-09-07-roadmap-progress.md).
 
+## 0.5.0 — Dashboard
+
+- Interactive Textual dashboard (default on a terminal): overview, checks, live monitor, games and storage, fixes, report. The text CLI is unchanged for scripts and `--json`.
+- Device identification for Steam Deck LCD/OLED and common Linux handhelds (DMI + APU).
+- Live telemetry from hwmon/power_supply: CPU/GPU load and clocks, APU power vs TDP, temperatures, fan, battery draw, health and time left, charger contract, memory and top processes.
+- Steam storage insight: per-game size, prefix, shader cache, Proton version, playtime, last played, pending updates, and read-only leftovers with Steam Cloud status.
+- New checks HW-THERMAL and STEAM-STORAGE; battery health in HW-BATTERY.
+- Textual becomes a runtime dependency (bundled in the release binary); without it the CLI falls back to text.
+
 ## Next priorities
 
 1. Validate distribution-specific updater/service adapters and component versions on Bazzite/CachyOS fixtures and hardware.
 2. Resolve automatic Proton/runtime selection and custom log paths, examine game launch evidence and test more real failure cases.
-3. Add a standalone controller interface and validate it in Gaming Mode, including focus, scaling and navigation without a keyboard.
-4. Expand suspend/battery evidence across boots and implement reproducible workload captures.
-5. Add functional controller/audio/dock tests only with explicit interaction; do not infer success from device presence.
+3. Make the dashboard usable with a controller in Gaming Mode (focus, scaling, navigation without a keyboard).
+4. Opt-in cleanup of leftovers with a backup-first flow, only after confirming Steam Cloud coverage per game.
+5. Telemetry recording during a play session (CSV/JSON) to compare TDP, temperatures and battery drain between games.
+6. Expand suspend/battery evidence across boots and implement reproducible workload captures.
+7. Add functional controller/audio/dock tests only with explicit interaction; do not infer success from device presence.
 
 ## Later / maybe never
 

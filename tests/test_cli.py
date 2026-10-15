@@ -17,7 +17,7 @@ from tests.conftest import healthy_commands, make_ctx, make_home, write_plugin
 
 def test_parser_defaults() -> None:
     args = build_parser("en").parse_args([])
-    assert args.command == "diagnose"
+    assert args.command is None
     assert args.json is False
     assert args.ascii is False
     assert args.only is None
@@ -272,3 +272,33 @@ def test_unknown_and_skipped_are_visible_in_compact(tmp_path: Path) -> None:
     assert 'skip' in text.lower()
     report.results[0].status = Status.UNKNOWN
     assert 'unknown' in render_cli(report).lower()
+
+
+def test_dashboard_only_for_people_at_a_capable_terminal(monkeypatch: pytest.MonkeyPatch) -> None:
+    from deckdoctor import cli
+
+    class Tty:
+        def isatty(self) -> bool:
+            return True
+
+    monkeypatch.setattr(cli.sys, "stdin", Tty())
+    monkeypatch.setattr(cli.sys, "stdout", Tty())
+    monkeypatch.setenv("TERM", "xterm-256color")
+    monkeypatch.delenv("DECKDOCTOR_NO_TUI", raising=False)
+    parser = build_parser("en")
+    assert cli._wants_tui(parser.parse_args([]))
+    for argv in (["--json"], ["-o", "x.md"], ["-v"], ["--ascii"], ["--no-color"]):
+        assert not cli._wants_tui(parser.parse_args(argv)), argv
+    monkeypatch.setenv("TERM", "dumb")
+    assert not cli._wants_tui(parser.parse_args([]))
+    monkeypatch.setenv("TERM", "xterm")
+    monkeypatch.setenv("DECKDOCTOR_NO_TUI", "1")
+    assert not cli._wants_tui(parser.parse_args([]))
+
+
+def test_dashboard_falls_back_to_text_without_textual(monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
+    from deckdoctor import cli, tui
+
+    monkeypatch.setattr(tui, "available", lambda: False)
+    assert cli._run_tui(build_parser("en").parse_args(["tui"]), "en", None) is None
+    assert "textual" in capsys.readouterr().err

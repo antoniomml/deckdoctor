@@ -38,7 +38,9 @@ False-positive risk: `low | medium | high`.
 | HOST-CAPABILITIES | Hardware, session and installed components | DMI, environment, executable paths, selected service states | Presence does not prove service health; distribution name does not choose behavior |
 | STEAM-LIBRARIES | Registered Steam libraries, including disconnected paths | `libraryfolders.vdf`, directory access, disk usage, `findmnt` | Does not verify game files; inaccessible metadata is UNKNOWN |
 | STEAM-GAME | One game selected by `--appid` | manifest, install directory, explicit compatibility mapping, runtime manifests, prefix and Proton log header | Does not prove launch success or resolve Steam's automatic compatibility choice |
-| HW-BATTERY | Current battery readings | bounded power-supply sysfs fields | Snapshot only; does not estimate battery life or diagnose drain |
+| HW-BATTERY | Current battery readings, health against design capacity, draw and time left | bounded power-supply sysfs fields | Snapshot only; WARNING below 70 % health. Time left is the kernel's current rate, not a prediction |
+| HW-THERMAL | APU, SSD and battery temperatures and fan speed | hwmon (`amdgpu`, `k10temp`, `nvme`, `steamdeck_hwmon`…) | Snapshot only; WARNING for APU ≥ 90 °C, SSD at its reported limit, battery ≥ 50 °C or a stopped fan while hot. UNKNOWN when no sensor is exposed |
+| STEAM-STORAGE | Proton prefixes and shader caches left behind by uninstalled games or removed non-Steam shortcuts | manifests, `libraryfolders.vdf`, `compatdata`/`shadercache`, binary `shortcuts.vdf`, bounded size walk | Read-only, never deletes. AppIDs registered on an unplugged library are protected; without a readable `shortcuts.vdf`, non-Steam prefixes are not reported |
 | HW-INPUT | Joystick devices visible to Linux | `/proc/bus/input/devices` | Does not test buttons or distinguish every virtual device |
 | HW-RESUME | Recent suspend/resume evidence | bounded kernel journal from current boot | Does not prove suspend reliability or establish a cause |
 | HW-DISPLAY | DRM connectors and reported modes | DRM sysfs | Does not measure active refresh rate, cable or dock stability |

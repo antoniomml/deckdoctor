@@ -31,6 +31,7 @@ class Facts:
     storage_internal: dict[str, Any] | None = None
     storage_sd: dict[str, Any] | None = None
     steam_game_count: int | None = None
+    storage_leftover_bytes: int | None = None
     steam_games_internal: int | None = None
     steam_games_sd: int | None = None
     ntp_synchronized: bool | None = None

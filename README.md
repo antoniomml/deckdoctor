@@ -4,11 +4,13 @@
 [![Release](https://img.shields.io/github/v/release/antoniomml/deckdoctor)](https://github.com/antoniomml/deckdoctor/releases/latest)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-**Your Steam Deck, in plain language.**
+**Your handheld gaming PC, in plain language.**
 
-Decky is down. Apps will not update. SteamOS says one thing and the Deck does another. DeckDoctor looks at **SteamOS, Decky, plugins, and Flatpak**, then tells you what it saw, why it matters, and what is safe to do next.
+Decky is down. Apps will not update. The fan sounds wrong, the battery drains, the SSD is full and you do not know why. DeckDoctor looks at **SteamOS, Decky, plugins, Flatpak, your hardware sensors and your Steam libraries**, then tells you what it saw, why it matters, and what is safe to do next.
 
-It does not change anything while it looks. If a safe fix exists, `deckdoctor fix` shows the plan and asks **y/N**. Pass `-y` to skip the question.
+It does not change anything while it looks. If a safe fix exists, DeckDoctor shows the plan and asks first.
+
+![DeckDoctor overview](docs/screenshots/overview.svg)
 
 ---
 
@@ -21,18 +23,45 @@ curl -L https://raw.githubusercontent.com/antoniomml/deckdoctor/main/scripts/ins
 deckdoctor
 ```
 
-The first launch takes a few seconds. After that, just run `deckdoctor`.
+The first launch takes a few seconds. After that, just run `deckdoctor`: in a terminal it opens the dashboard; in scripts, pipes or with `--json` it prints the classic text report.
 
-The UI is English. Use `--lang es` only if you want Spanish.
+The UI is English. Use `--lang es` (or `DECKDOCTOR_LANG=es`) if you want Spanish.
 
 ---
 
-## What it looks like
+## The dashboard
 
-When something is wrong:
+Six tabs, keyboard driven (`1`–`6`, arrows, Enter, `f` to fix, `?` for help). It adapts to small terminals and SSH sessions.
+
+| Tab | What you get |
+|---|---|
+| **Overview** | One verdict, your device (model, APU, OS, kernel, Steam, Decky), storage per drive, battery health, and the things that need attention |
+| **Checks** | Every check grouped by area, with what was found, why it matters, what to do and the raw evidence. `p` shows only problems |
+| **Monitor** | Live CPU/GPU load and clocks, APU power against the TDP limit, APU/SSD/battery temperatures, fan, battery draw and time left, charger wattage, RAM, swap and the busiest processes |
+| **Games** | Every installed game with size, Proton prefix, shader cache, Proton version, playtime and last played; pending updates; and *leftovers*: prefixes and shader caches of games you already uninstalled |
+| **Fixes** | Every repair DeckDoctor can apply, each with risk, exact change and how to undo it, plus *Fix all* |
+| **Report** | A sanitized Markdown/JSON report to share on Discord, Reddit or GitHub |
+
+### Fixing is one step
+
+Problems DeckDoctor can repair are marked *can be fixed* wherever they appear. Press **Fix it** in the check, **Fix all** in the overview, or just `f`. One dialog shows exactly what will change and how to undo it; nothing runs until you say yes (`y`). DeckDoctor then hands the terminal over while the fix runs (so `sudo` can ask for your password), comes back, scans again and tells you whether the problem is really gone.
+
+![Confirming a fix](docs/screenshots/confirm.svg)
+
+![Live monitor](docs/screenshots/monitor.svg)
+
+![Games and storage](docs/screenshots/games.svg)
+
+Leftovers are only listed, never deleted: a Proton prefix can hold save games that Steam Cloud does not sync, so the table shows whether Steam reported the game as cloud-synced. Libraries on an unplugged microSD are never reported as leftovers.
+
+---
+
+## Text mode
+
+Outside an interactive terminal (or with `deckdoctor diagnose`), the classic report looks like this when something is wrong:
 
 ```text
-🩺  DeckDoctor 0.4.1
+🩺  DeckDoctor 0.5.0
     SteamOS 3.8.14 (build 20260624.1, variant steamdeck) · Decky v3.2.6 (stable)
     Internal  81.8 GB free of 224.0 GB
     microSD   292.4 GB free of 469.0 GB
@@ -48,9 +77,10 @@ When something is wrong:
 
     ✅  19 ok    ❌  1    ⚠️  1
 
+    📊  deckdoctor tui        live dashboard, games and storage
     📄  deckdoctor report     Discord report
     🔍  deckdoctor -v         every check
-    🔧  deckdoctor fix        2 safe plan(s)
+    🔧  deckdoctor fix        2 available plan(s)
     Diagnose never changes anything. `deckdoctor fix` asks first.
 ```
 
@@ -62,12 +92,13 @@ The summary distinguishes observed issues, unknown results and skipped checks. N
 
 | You want to | You type |
 |---|---|
-| See what is going on | `deckdoctor` |
+| Open the dashboard | `deckdoctor` (or `deckdoctor tui`) |
+| Plain text diagnosis | `deckdoctor diagnose` |
 | Save a report for Discord | `deckdoctor report` |
 | See the plan, then confirm y/N | `deckdoctor fix` |
 | Apply without asking | `deckdoctor fix -y` |
 
-`deckdoctor -v` shows every check, including the ones that passed.
+`deckdoctor -v` shows every check, including the ones that passed. Set `DECKDOCTOR_NO_TUI=1` to always get text output.
 
 ---
 
@@ -98,7 +129,7 @@ Other symptom IDs: `decky`, `updates`, `audio`, `dock`, `performance`. `--appid`
 
 Libraries include registered but missing paths, access/free-space checks and mount metadata when available. Game inspection reads the installed manifest, install folder, explicit compatibility-tool mapping, runtime inventory, prefix presence and default Proton log metadata/header. It does not establish that a game launches or resolve Steam's automatic compatibility selection.
 
-Battery, controller, resume, audio, display and system-pressure checks provide observations and guided next steps. They do not measure button functionality, battery life, audible sound, dock stability or game FPS. The CLI is independent of Decky; a controller-native Gaming Mode interface is still pending.
+Battery (including health against design capacity), temperatures and fan, controller, resume, audio, display and system-pressure checks provide observations and guided next steps. They do not measure button functionality, audible sound, dock stability or game FPS. DeckDoctor is independent of Decky; a controller-native Gaming Mode interface is still pending.
 
 Save and compare incident reports using identical arguments and language:
 
@@ -116,7 +147,7 @@ The release executable is available through the installer above. Contributors ca
 
 ## Where it runs
 
-Built for the **Steam Deck** (x86_64 Linux). It also starts on other handheld Linux images and does what it can there.
+Built and tested on the **Steam Deck** (LCD and OLED, x86_64 SteamOS). It recognizes other handhelds running Linux (Bazzite, CachyOS, ChimeraOS…): ROG Ally / Ally X / Xbox Ally, Legion Go / Go S, MSI Claw, GPD Win, AYANEO, OneXPlayer, AYN and Zotac Zone. Sensors are read from standard Linux interfaces (hwmon, power_supply), so what you see depends on what each device exposes; anything missing is shown as unavailable rather than guessed.
 
 It is not a Windows or macOS app.
 
